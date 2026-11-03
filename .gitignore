@@ -1,0 +1,9 @@
+# Build output (scripts/install.sh, CLion profiles)
+build/
+cmake-build-*/
+
+# IDE and local tool settings
+.idea/
+.claude/settings.local.json
+
+.DS_Store

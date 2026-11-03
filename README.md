@@ -1,0 +1,83 @@
+# workspeed
+
+Keyboard-driven macOS Spaces: caps lock becomes Hyper, Hyper + key jumps instantly
+(no animation) to a space by number or to whichever space an app is on.
+
+- Caps lock held = Hyper, tapped alone = back to the last used space (tap again
+  to return).
+- `space N` / `space prev` / `space next`: instant switch through
+  [InstantSpaceSwitcher](https://github.com/jurplel/InstantSpaceSwitcher)'s core,
+  vendored unmodified in [third_party/InstantSpaceSwitcher](third_party/InstantSpaceSwitcher)
+  (MIT) and called in-process.
+- `app NAME`: finds the app's window on any space (native fullscreen and Split View
+  included), jumps there and focuses it. Does nothing if the app has no open
+  window (it doesn't launch apps).
+- `desktop`: jumps to the first space without a fullscreen app.
+- Press an app's key again while it's in front: next tab (types `ctrl+tab`, or the
+  binding's `; tab` shortcut). Hyper + cmd + the app's key: its next window, across
+  spaces.
+- `exec CMD`: runs a shell command.
+
+See [config.example](config.example) for the config format.
+
+## Requirements
+
+- System Settings → Desktop & Dock → Mission Control: turn off
+  **Automatically rearrange Spaces based on most recent use**.
+- No other caps lock remapper running (Hyperkey, Karabiner caps lock rules).
+
+## Setup
+
+1. **Code-signing certificate** (once). Keeps the Accessibility grant across rebuilds.
+   Open Keychain Access (`open -a "Keychain Access"`), then
+   Keychain Access menu → Certificate Assistant → Create a Certificate…
+   - Name: `workspeed-cert`
+   - Identity Type: Self Signed Root
+   - Certificate Type: Code Signing
+
+   Without it, `install.sh` signs ad hoc and you re-grant Accessibility after every install.
+
+2. **Install and start** (also creates `~/.config/workspeed/config` if missing):
+
+   ```bash
+   scripts/install.sh
+   ```
+
+3. **Permissions.** macOS asks for Accessibility on first start: enable
+   `workspeed` in System Settings → Privacy & Security → Accessibility. workspeed
+   waits and starts working as soon as it's granted.
+
+## Day to day
+
+| Task | Command |
+|---|---|
+| Reload config after editing | `pkill -HUP workspeed` |
+| Check config | `~/.local/bin/workspeed --check` |
+| See spaces and their apps | `~/.local/bin/workspeed --list` |
+| Log | `tail -f ~/Library/Logs/workspeed.log` |
+| Restart | `launchctl kickstart -k gui/$(id -u)/local.workspeed` |
+| Stop until next login | `launchctl bootout gui/$(id -u)/local.workspeed` |
+| Update after code changes | `scripts/install.sh` |
+| Uninstall | `scripts/uninstall.sh` |
+
+If caps lock ever stays dead after a crash:
+`hidutil property --set '{"UserKeyMapping":[]}'`
+
+## Development
+
+Only one workspeed runs at a time; a second one exits with "already running". To
+run from CLion, stop the installed one first (`launchctl bootout …` above) and
+start it again afterwards with `scripts/install.sh` or
+`launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.workspeed.plist`.
+
+Run with `--debug` to log every key event and triggered hotkey.
+
+Two parts rely on undocumented macOS internals. If an update breaks something,
+look there first:
+
+- space lookups: private SkyLight calls in [include/cgs_private.h](include/cgs_private.h)
+  (`--list` shows wrong or no spaces)
+- switching: synthetic Dock gestures in
+  [third_party/InstantSpaceSwitcher](third_party/InstantSpaceSwitcher) (keys are
+  caught but nothing switches); upstream breaks the same way and usually gets
+  fixed first, see that directory's README for updating.

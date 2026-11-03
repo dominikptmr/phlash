@@ -1,0 +1,46 @@
+                # workspeed config — copy to ~/.config/workspeed/config
+#
+#   hyper [+ mod ...] - key : action
+#
+#   hyper   caps lock (tap it alone to go back to the last used space)
+#   mod     cmd | opt | ctrl | shift
+#   key     what the key types in your keyboard layout, lowercase (y, ö, #, 1),
+#           a name (return, tab, space, delete, escape, left, f5, ...)
+#           or a hex keycode like 0x0a
+#   action  space <1-16> | space prev | space next | desktop
+#           | app <name> [; tab <shortcut> | ; tab none] | exec <shell command>
+#
+# app jumps instantly to the space the app is on and focuses it, wherever its
+# fullscreen space has moved to. If the app has no open window, nothing happens.
+# The name is what `workspeed --list` shows or the .app's name in /Applications.
+# "app A | B | C" picks the first one that has a window open. desktop goes to
+# the first space without a fullscreen app.
+#
+# Press an app's key again while it is in front to go to its next tab: workspeed
+# types ctrl+tab, or the shortcut after "; tab" ("; tab none" turns it off).
+# Hyper + cmd + an app's key cycles through that app's windows.
+#
+# Unbound Hyper combos do nothing.
+# Reload after editing: pkill -HUP workspeed
+
+# apps: grid on the left hand, most used on the home row
+hyper - q : app awork
+hyper - w : app Slack
+hyper - e : app Calendar
+
+hyper - s : app Zen
+hyper - d : app WebStorm | PhpStorm | CLion | Visual Studio Code ; tab ctrl+right
+hyper - f : app Claude
+hyper - g : app Ghostty
+
+hyper - y : app Finder
+hyper - x : app Mail
+hyper - c : desktop
+
+# spaces one at a time
+hyper - h : space prev
+hyper - l : space next
+
+# spaces by position (they shift when fullscreen apps open or close)
+# hyper - 1 : space 1
+# hyper - 2 : space 2
