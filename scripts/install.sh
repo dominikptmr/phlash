@@ -9,7 +9,6 @@ CERT=phlash-cert
 BIN="$HOME/.local/bin/phlash"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 LOG="$HOME/Library/Logs/phlash.log"
-CONFIG="$HOME/.config/phlash/config"
 BUILD=build/release
 DOMAIN="gui/$(id -u)"
 
@@ -35,15 +34,9 @@ else
          "you'll have to re-grant Accessibility after every install)" >&2
 fi
 
-if [[ ! -f "$CONFIG" ]]; then
-    mkdir -p "$(dirname "$CONFIG")"
-    cp config.example "$CONFIG"
-    echo "install: created $CONFIG from config.example"
-fi
-
 "$CMAKE" -S . -B "$BUILD" -DCMAKE_BUILD_TYPE=Release -DPHLASH_SIGN_IDENTITY="$IDENTITY" >/dev/null
 "$CMAKE" --build "$BUILD"
-"$BUILD/phlash" --check >/dev/null
+"$BUILD/phlash" --check >/dev/null  # creates the config on first install
 
 # Stop the running copy and wait until launchd has let go of it.
 launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true

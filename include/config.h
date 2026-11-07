@@ -50,6 +50,10 @@ struct config {
 // Default location: ~/.config/phlash/config. Returned string is static.
 const char *config_default_path(void);
 
+// Writes the built-in example config (config.example) to path, creating its
+// directories. Never overwrites an existing file.
+bool config_create_default(const char *path);
+
 // Parses the file at path. Prints every error with its line number to stderr
 // and returns NULL if there were any.
 struct config *config_load(const char *path);

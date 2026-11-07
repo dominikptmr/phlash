@@ -1,0 +1,59 @@
+# Homebrew formula for phlash. Template: scripts/update-formula.sh fills in
+# @URL@ and @SHA256@ for a release and writes it to the tap as Formula/phlash.rb.
+class Phlash < Formula
+  desc "Instant keyboard navigation for macOS Spaces, with caps lock as Hyper"
+  homepage "https://github.com/dominikptmr/phlash"
+  url "@URL@"
+  sha256 "@SHA256@"
+  license "MIT"
+  head "https://github.com/dominikptmr/phlash.git", branch: "main"
+
+  depends_on "cmake" => :build
+  depends_on :macos
+
+  def install
+    system "cmake", "-S", ".", "-B", "build", "-DPHLASH_SIGN_IDENTITY=-", *std_cmake_args
+    system "cmake", "--build", "build"
+    bin.install "build/phlash"
+    pkgshare.install "config.example"
+  end
+
+  service do
+    run opt_bin/"phlash"
+    keep_alive crashed: true
+    process_type :interactive
+    environment_variables PATH: std_service_path_env
+    log_path var/"log/phlash.log"
+    error_log_path var/"log/phlash.log"
+  end
+
+  def caveats
+    <<~EOS
+      Start phlash now and at every login:
+        brew services start phlash
+
+      macOS asks for Accessibility permission on first start: enable phlash in
+      System Settings → Privacy & Security → Accessibility. phlash waits and
+      starts working as soon as it's granted. After `brew upgrade phlash`,
+      macOS may ask again.
+
+      On first start phlash creates ~/.config/phlash/config from the example
+      (#{opt_pkgshare}/config.example). Reload it after editing:
+        pkill -HUP phlash
+
+      Before starting, quit other caps lock remappers (Hyperkey, Karabiner
+      caps lock rules) and turn off System Settings → Desktop & Dock →
+      "Automatically rearrange Spaces based on most recent use".
+
+      Log: #{var}/log/phlash.log
+    EOS
+  end
+
+  test do
+    (testpath/"config").write <<~EOS
+      hyper : space back
+      hyper - s : app Finder
+    EOS
+    assert_match "is valid", shell_output("#{bin}/phlash --check --config #{testpath}/config")
+  end
+end

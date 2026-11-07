@@ -5,11 +5,14 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 // One binding or setting per line, '#' starts a comment line:
 //
@@ -38,11 +41,45 @@
 
 #define DEFAULT_TAP_MS 300
 
+// config.example, compiled in by CMake (xxd -i -n default_config).
+extern unsigned char default_config[];
+extern unsigned int default_config_len;
+
 const char *config_default_path(void) {
     static char path[PATH_MAX];
     const char *home = getenv("HOME");
     snprintf(path, sizeof path, "%s/.config/phlash/config", home ? home : "");
     return path;
+}
+
+bool config_create_default(const char *path) {
+    // Create the parent directories (~/.config, ~/.config/phlash) as needed.
+    char dir[PATH_MAX];
+    strlcpy(dir, path, sizeof dir);
+    char *slash = strrchr(dir, '/');
+    if (!slash) return false;
+    *slash = '\0';
+    for (char *p = dir + 1; *p; p++) {
+        if (*p != '/') continue;
+        *p = '\0';
+        mkdir(dir, 0755);
+        *p = '/';
+    }
+    if (mkdir(dir, 0755) != 0 && errno != EEXIST) {
+        fprintf(stderr, "phlash: cannot create %s: %s\n", dir, strerror(errno));
+        return false;
+    }
+
+    // O_EXCL: never overwrite a config, even one created a moment ago.
+    int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, 0644);
+    if (fd < 0) {
+        fprintf(stderr, "phlash: cannot create %s: %s\n", path, strerror(errno));
+        return false;
+    }
+    bool ok = write(fd, default_config, default_config_len) == (ssize_t)default_config_len;
+    close(fd);
+    if (!ok) fprintf(stderr, "phlash: cannot write %s\n", path);
+    return ok;
 }
 
 static char *trim(char *s) {

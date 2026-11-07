@@ -10,6 +10,7 @@
 #include "tap.h"
 
 #include <dispatch/dispatch.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
 #include <limits.h>
@@ -257,10 +258,11 @@ int main(int argc, char *argv[]) {
     };
     bool check_only = false;
     config_path = config_default_path();
+    bool custom_path = false;
     int opt;
     while ((opt = getopt_long(argc, argv, "c:kldh", options, NULL)) != -1) {
         switch (opt) {
-        case 'c': config_path = optarg; break;
+        case 'c': config_path = optarg; custom_path = true; break;
         case 'k': check_only = true; break;
         case 'l': list_print(); return 0;
         case 'd': debug = log_debug = true; break;
@@ -270,6 +272,13 @@ int main(int argc, char *argv[]) {
     }
 
     setvbuf(stdout, NULL, _IOLBF, 0);
+
+    // First start (e.g. after brew install): begin with the example config.
+    // A missing --config path stays an error.
+    if (!custom_path && access(config_path, F_OK) != 0 && errno == ENOENT &&
+        config_create_default(config_path)) {
+        printf("phlash: created %s from the example config\n", config_path);
+    }
 
     load_layout();
     config = config_load(config_path);
