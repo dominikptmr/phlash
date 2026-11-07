@@ -1,24 +1,25 @@
 # workspeed
 
 Keyboard-driven macOS Spaces: caps lock becomes Hyper, Hyper + key jumps instantly
-(no animation) to a space by number or to whichever space an app is on.
+(no animation) to whichever space an app is on.
 
-- Caps lock held = Hyper, tapped alone = back to the last used space (tap again
-  to return).
-- `space N` / `space prev` / `space next`: instant switch through
+Everything it does is set in `~/.config/workspeed/config` (see
+[config.example](config.example)):
+
+- **Hyper + key** (caps lock held): `app NAME` jumps to the app's window on any
+  space (native fullscreen and Split View included) and focuses it; it does
+  nothing if the app has no open window. Pressing the key again while the app is
+  in front goes to its next tab. Fallbacks: `app WebStorm | PhpStorm`.
+- **Taps** (caps lock tapped, alone or while holding modifiers), e.g.
+  `hyper : space back`, `cmd + hyper : space cycle`, `opt + hyper : tab next`,
+  `ctrl + hyper : window next`. Tab switchers stay open until the modifier is let go.
+- Actions: `app`, `desktop`, `space back|cycle`, `tab next|prev`,
+  `window next|prev`, `key <shortcut>` (e.g. `hyper - t : key cmd+t`), `exec`.
+  Settings: `set tab`, `set tap-ms`, `set app-window-mod`.
+- Switching is instant through
   [InstantSpaceSwitcher](https://github.com/jurplel/InstantSpaceSwitcher)'s core,
   vendored unmodified in [third_party/InstantSpaceSwitcher](third_party/InstantSpaceSwitcher)
   (MIT) and called in-process.
-- `app NAME`: finds the app's window on any space (native fullscreen and Split View
-  included), jumps there and focuses it. Does nothing if the app has no open
-  window (it doesn't launch apps).
-- `desktop`: jumps to the first space without a fullscreen app.
-- Press an app's key again while it's in front: next tab (types `ctrl+tab`, or the
-  binding's `; tab` shortcut). Hyper + cmd + the app's key: its next window, across
-  spaces.
-- `exec CMD`: runs a shell command.
-
-See [config.example](config.example) for the config format.
 
 ## Requirements
 

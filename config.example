@@ -1,33 +1,61 @@
-                # workspeed config — copy to ~/.config/workspeed/config
+# workspeed config — copy to ~/.config/workspeed/config
+# Everything workspeed does comes from here: a line that's missing does nothing.
+# Reload after editing: pkill -HUP workspeed   Check: workspeed --check
 #
-#   hyper [+ mod ...] - key : action
+#   hyper [+ mod ...] - key : action       hold caps lock (Hyper), press key
+#   [mod + ...] hyper : action             tap caps lock while holding mods
+#   set <setting> <value>
 #
-#   hyper   caps lock (tap it alone to go back to the last used space)
 #   mod     cmd | opt | ctrl | shift
 #   key     what the key types in your keyboard layout, lowercase (y, ö, #, 1),
 #           a name (return, tab, space, delete, escape, left, f5, ...)
 #           or a hex keycode like 0x0a
-#   action  space <1-16> | space prev | space next | desktop
-#           | app <name> [; tab <shortcut> | ; tab none] | exec <shell command>
 #
-# app jumps instantly to the space the app is on and focuses it, wherever its
-# fullscreen space has moved to. If the app has no open window, nothing happens.
-# The name is what `workspeed --list` shows or the .app's name in /Applications.
-# "app A | B | C" picks the first one that has a window open. desktop goes to
-# the first space without a fullscreen app.
+# Actions
+#   app <name>          jump instantly to the app's window, wherever its
+#                       fullscreen space has moved to. Nothing happens if it has
+#                       no open window. The name is what `workspeed --list`
+#                       shows or the .app's name. "app A | B | C" picks the first
+#                       one with a window open. Pressing the key again while the
+#                       app is in front goes to its next tab ("; tab <shortcut>"
+#                       for apps that don't use the default, "; tab none" = off).
+#   desktop             first space without a fullscreen app
+#   space back          last used space
+#   space cycle [prev]  next / previous space, wrapping around
+#   tab next | prev     tab of the app in front. On a tap line, the tab switcher
+#                       stays open until you let go of the line's modifiers
+#                       (shift aside); on a Hyper + key line, until Hyper.
+#   window next | prev  window of the app in front, across spaces
+#   key <shortcut>      type a shortcut into the app in front, e.g. cmd+t
+#   exec <command>      run a shell command
 #
-# Press an app's key again while it is in front to go to its next tab: workspeed
-# types ctrl+tab, or the shortcut after "; tab" ("; tab none" turns it off).
-# Hyper + cmd + an app's key cycles through that app's windows.
+# Settings
+#   set tab <shortcut>        next-tab shortcut for apps without "; tab"
+#   set tap-ms <50-1000>      how quickly caps lock must be released for a tap
+#   set app-window-mod <mods> Hyper + these + an app's key = that app's next
+#                             window ("none" turns it off)
 #
-# Unbound Hyper combos do nothing.
-# Reload after editing: pkill -HUP workspeed
+# Unbound Hyper combos and taps do nothing.
+
+set tab ctrl+tab
+set tap-ms 300
+set app-window-mod cmd
+
+# taps: alone = back, with a modifier = step through spaces / tabs / windows
+hyper : space back
+cmd + hyper : space cycle
+cmd + shift + hyper : space cycle prev
+opt + hyper : tab next
+opt + shift + hyper : tab prev
+ctrl + hyper : window next
+ctrl + shift + hyper : window prev
 
 # apps: grid on the left hand, most used on the home row
 hyper - q : app awork
 hyper - w : app Slack
 hyper - e : app Calendar
 
+hyper - a : desktop
 hyper - s : app Zen
 hyper - d : app WebStorm | PhpStorm | CLion | Visual Studio Code ; tab ctrl+right
 hyper - f : app Claude
@@ -35,12 +63,6 @@ hyper - g : app Ghostty
 
 hyper - y : app Finder
 hyper - x : app Mail
-hyper - c : desktop
 
-# spaces one at a time
-hyper - h : space prev
-hyper - l : space next
-
-# spaces by position (they shift when fullscreen apps open or close)
-# hyper - 1 : space 1
-# hyper - 2 : space 2
+# shortcuts for the app in front
+hyper - t : key cmd+t

@@ -77,25 +77,22 @@ bool switch_to(int index) {
     return true;
 }
 
-// Moves one space within the current display; does nothing at either end.
-static bool switch_by(int delta) {
+bool switch_cycle(bool reverse) {
     struct space spaces[SPACES_MAX];
     size_t count = spaces_get(spaces);
     int current = spaces_index(spaces, count, spaces_active());
     if (current == 0) return false;
 
-    int target = current + delta;
-    if (target < 1 || (size_t)target > count) return false;
-    if (spaces[target - 1].display != spaces[current - 1].display) return false;
+    // This display's spaces are contiguous in the list: [first, last].
+    int display = spaces[current - 1].display;
+    int first = current, last = current;
+    while (first > 1 && spaces[first - 2].display == display) first--;
+    while ((size_t)last < count && spaces[last].display == display) last++;
+
+    int target = current + (reverse ? -1 : 1);
+    if (target < first) target = last;
+    if (target > last) target = first;
     return switch_to(target);
-}
-
-bool switch_prev(void) {
-    return switch_by(-1);
-}
-
-bool switch_next(void) {
-    return switch_by(1);
 }
 
 bool switch_desktop(void) {

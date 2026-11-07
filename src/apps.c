@@ -95,10 +95,8 @@ static pid_t frontmost_pid(void) {
     return pid;
 }
 
-// The entry of names[] that is the app in front, or NULL.
-static const char *front_name(char *names[], size_t count, pid_t *pid_out) {
-    pid_t pid = frontmost_pid();
-    if (!pid) return NULL;
+// The entry of names[] that is the app with this pid, or NULL.
+static const char *front_name_for(pid_t pid, char *names[], size_t count, pid_t *pid_out) {
     for (size_t i = 0; i < count; i++) {
         if (pid_matches(pid, names[i])) {
             *pid_out = pid;
@@ -106,6 +104,12 @@ static const char *front_name(char *names[], size_t count, pid_t *pid_out) {
         }
     }
     return NULL;
+}
+
+// The entry of names[] that is the app in front, or NULL.
+static const char *front_name(char *names[], size_t count, pid_t *pid_out) {
+    pid_t pid = frontmost_pid();
+    return pid ? front_name_for(pid, names, count, pid_out) : NULL;
 }
 
 static bool activate(pid_t pid) {
@@ -127,11 +131,14 @@ static void switch_to_space_of(uint64_t space) {
 
 // --- next tab ---------------------------------------------------------------
 
-// The tab shortcut's modifiers stay pressed (for the app) while Hyper is held,
-// like holding option during option+tab: apps that show a tab switcher while
-// ctrl is down (Zen, Firefox) keep it open across presses and pick the tab
-// when Hyper is released.
+// The tab shortcut's modifiers (all but shift) stay pressed for the app until
+// the gesture ends, like holding option during option+tab: apps that show a tab
+// switcher while ctrl is down (Zen, Firefox) keep it open across presses and
+// pick the tab when it's released. The gesture ends when Hyper is released
+// (hold_until 0), or when the user lets go of the modifiers in hold_until
+// (option for option + caps lock taps).
 static CGEventFlags held_mods;
+static CGEventFlags hold_until;
 
 static const struct {
     CGEventFlags flag;
@@ -155,24 +162,85 @@ static void post_key(uint16_t keycode, bool down, CGEventFlags flags, bool modif
     CFRelease(e);
 }
 
+void apps_send_key(const struct combo *c) {
+    post_key(c->keycode, true, c->mods, false);
+    post_key(c->keycode, false, c->mods, false);
+}
+
 void apps_release_held(void) {
     for (size_t i = MODIFIER_KEY_COUNT; i-- > 0;) {
         if (!(held_mods & modifier_keys[i].flag)) continue;
         held_mods &= ~modifier_keys[i].flag;
         post_key(modifier_keys[i].keycode, false, held_mods, true);
     }
+    hold_until = 0;
 }
 
-// Types the shortcut into the app in front, leaving its modifiers held.
-static void send_next_tab(const struct combo *c) {
-    if (held_mods != c->mods) apps_release_held();
+void apps_hyper_released(void) {
+    if (held_mods && !hold_until) apps_release_held();
+}
+
+void apps_mods_changed(CGEventFlags mods) {
+    if (held_mods && hold_until && !(mods & hold_until)) apps_release_held();
+}
+
+// Types the shortcut into the app in front, leaving its modifiers held until
+// the gesture ends (see hold_until). Shift only goes on the key itself, so
+// going backwards and forwards keeps the switcher open.
+static void send_tab(const struct combo *c, CGEventFlags until) {
+    CGEventFlags hold = c->mods & ~kCGEventFlagMaskShift;
+    if (held_mods != hold) apps_release_held();
     for (size_t i = 0; i < MODIFIER_KEY_COUNT; i++) {
-        if (!(c->mods & modifier_keys[i].flag) || (held_mods & modifier_keys[i].flag)) continue;
+        if (!(hold & modifier_keys[i].flag) || (held_mods & modifier_keys[i].flag)) continue;
         held_mods |= modifier_keys[i].flag;
         post_key(modifier_keys[i].keycode, true, held_mods, true);
     }
-    post_key(c->keycode, true, held_mods, false);
-    post_key(c->keycode, false, held_mods, false);
+    hold_until = until;
+    CGEventFlags flags = held_mods | (c->mods & kCGEventFlagMaskShift);
+    post_key(c->keycode, true, flags, false);
+    post_key(c->keycode, false, flags, false);
+}
+
+// The previous-tab version of a next-tab shortcut: ctrl+right -> ctrl+left,
+// ctrl+tab -> ctrl+shift+tab.
+static struct combo reversed(const struct combo *c) {
+    enum { LEFT = 0x7B, RIGHT = 0x7C, DOWN = 0x7D, UP = 0x7E };
+    struct combo r = *c;
+    switch (c->keycode) {
+    case LEFT: r.keycode = RIGHT; break;
+    case RIGHT: r.keycode = LEFT; break;
+    case DOWN: r.keycode = UP; break;
+    case UP: r.keycode = DOWN; break;
+    default: r.mods ^= kCGEventFlagMaskShift; break;
+    }
+    return r;
+}
+
+void apps_cycle_tab(const struct config *config, bool reverse, CGEventFlags until) {
+    refresh_windows();
+    pid_t pid = frontmost_pid();
+    if (!pid) return;
+
+    // The app's own binding knows its tab shortcut; others get "set tab".
+    const struct combo *tab = &config->default_tab;
+    for (size_t i = 0; i < config->count; i++) {
+        const struct binding *b = &config->bindings[i];
+        if (b->action != ACTION_APP) continue;
+        char buf[512];
+        char *names[MAX_NAMES];
+        size_t count = split_names(b->arg, buf, sizeof buf, names);
+        pid_t matched;
+        if (!front_name_for(pid, names, count, &matched)) continue;
+        tab = config_app_tab(config, b);
+        if (!tab) {
+            debugf("app: tab cycling is off for %s", b->arg);
+            return;
+        }
+        break;
+    }
+    struct combo combo = reverse ? reversed(tab) : *tab;
+    debugf("app: %s tab in pid %d", reverse ? "previous" : "next", pid);
+    send_tab(&combo, until);
 }
 
 void apps_focus(const char *spec, const struct combo *next_tab) {
@@ -186,7 +254,7 @@ void apps_focus(const char *spec, const struct combo *next_tab) {
     if (front) {
         if (next_tab) {
             debugf("app: %s is in front, next tab", front);
-            send_next_tab(next_tab);
+            send_tab(next_tab, 0);  // held while Hyper is
         }
         return;
     }
@@ -259,6 +327,42 @@ static void raise_window(pid_t pid, uint32_t id) {
     activate(pid);
 }
 
+// Switches to the app's next (or previous) window in Mission Control order:
+// by space, left to right, then by window ID, wrapping around.
+static void cycle_windows(pid_t pid, const char *label, bool reverse) {
+    struct space spaces[SPACES_MAX];
+    size_t space_count = spaces_get(spaces);
+    struct ordered list[WINDOWS_MAX];
+    size_t n = 0;
+    for (size_t i = 0; i < window_count; i++) {
+        if (windows[i].pid != pid || windows[i].space == 0) continue;
+        list[n].w = &windows[i];
+        list[n].space_index = spaces_index(spaces, space_count, windows[i].space);
+        n++;
+    }
+    if (n < 2) {
+        debugf("app: %s has no other window", label);
+        return;
+    }
+    qsort(list, n, sizeof list[0], compare_ordered);
+
+    // Step from the focused window. Without a known focused window, the first
+    // one on the active space counts as current.
+    uint32_t current = focused_window_id(pid);
+    uint64_t active = spaces_active();
+    size_t at = n;
+    for (size_t i = 0; i < n && at == n; i++) {
+        if (current ? list[i].w->id == current : list[i].w->space == active) at = i;
+    }
+    if (at == n) at = 0;
+    struct window next = *list[(reverse ? at + n - 1 : at + 1) % n].w;
+
+    debugf("app: %s window %u -> %u on space %llu", label, current, next.id,
+           (unsigned long long)next.space);
+    switch_to_space_of(next.space);
+    raise_window(next.pid, next.id);
+}
+
 void apps_next_window(const char *spec) {
     apps_release_held();
     char buf[512];
@@ -272,35 +376,12 @@ void apps_next_window(const char *spec) {
         apps_focus(spec, NULL);  // not in front yet: just go there
         return;
     }
+    cycle_windows(pid, front, false);
+}
 
-    struct space spaces[SPACES_MAX];
-    size_t space_count = spaces_get(spaces);
-    struct ordered list[WINDOWS_MAX];
-    size_t n = 0;
-    for (size_t i = 0; i < window_count; i++) {
-        if (windows[i].pid != pid || windows[i].space == 0) continue;
-        list[n].w = &windows[i];
-        list[n].space_index = spaces_index(spaces, space_count, windows[i].space);
-        n++;
-    }
-    if (n < 2) {
-        debugf("app: %s has no other window", front);
-        return;
-    }
-    qsort(list, n, sizeof list[0], compare_ordered);
-
-    // The window after the focused one, wrapping around. Without a known
-    // focused window, the first one on the active space counts as current.
-    uint32_t current = focused_window_id(pid);
-    uint64_t active = spaces_active();
-    size_t at = n;
-    for (size_t i = 0; i < n && at == n; i++) {
-        if (current ? list[i].w->id == current : list[i].w->space == active) at = i;
-    }
-    struct window next = *list[at == n ? 0 : (at + 1) % n].w;
-
-    debugf("app: %s window %u -> %u on space %llu", front, current, next.id,
-           (unsigned long long)next.space);
-    switch_to_space_of(next.space);
-    raise_window(next.pid, next.id);
+void apps_cycle_window(bool reverse) {
+    apps_release_held();
+    refresh_windows();
+    pid_t pid = frontmost_pid();
+    if (pid) cycle_windows(pid, "app in front", reverse);
 }

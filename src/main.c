@@ -35,8 +35,8 @@ static void usage(FILE *out) {
             "  --list         list spaces (* = current) and the apps on them, then exit\n"
             "  --debug        log every key event and hotkey to stderr/stdout\n"
             "\n"
-            "Caps lock becomes Hyper while workspeed runs; tapping it alone switches to\n"
-            "the last used space.\n"
+            "Caps lock becomes Hyper while workspeed runs. What Hyper + key and tapping\n"
+            "Hyper (alone or with modifiers held) do comes from the config.\n"
             "Send SIGHUP to reload the config.\n");
 }
 
@@ -79,48 +79,85 @@ static void print_key(uint16_t keycode) {
     else printf("0x%02x", keycode);
 }
 
-static void print_binding(const struct binding *b) {
-    CGEventFlags mods = b->mods;
-    printf("hyper%s%s%s%s - ",
-           mods & kCGEventFlagMaskCommand ? " + cmd" : "",
-           mods & kCGEventFlagMaskAlternate ? " + opt" : "",
-           mods & kCGEventFlagMaskControl ? " + ctrl" : "",
-           mods & kCGEventFlagMaskShift ? " + shift" : "");
-    print_key(b->keycode);
-    printf(" : ");
+// Prints the modifiers joined by separator; false if there were none.
+static bool print_mods(CGEventFlags mods, const char *separator) {
+    static const struct { CGEventFlags flag; const char *name; } names[] = {
+        {kCGEventFlagMaskCommand, "cmd"}, {kCGEventFlagMaskAlternate, "opt"},
+        {kCGEventFlagMaskControl, "ctrl"}, {kCGEventFlagMaskShift, "shift"},
+    };
+    bool any = false;
+    for (size_t i = 0; i < sizeof names / sizeof names[0]; i++) {
+        if (!(mods & names[i].flag)) continue;
+        printf("%s%s", any ? separator : "", names[i].name);
+        any = true;
+    }
+    return any;
+}
 
-    switch (b->action) {
-    case ACTION_SPACE: printf("space %d\n", b->space); break;
-    case ACTION_SPACE_PREV: printf("space prev\n"); break;
-    case ACTION_SPACE_NEXT: printf("space next\n"); break;
-    case ACTION_DESKTOP: printf("desktop\n"); break;
-    case ACTION_APP:
-        printf("app %s ; tab ", b->arg);
-        if (b->tab_enabled) {
-            CGEventFlags tab = b->tab.mods;
-            printf("%s%s%s%s", tab & kCGEventFlagMaskCommand ? "cmd+" : "",
-                   tab & kCGEventFlagMaskAlternate ? "opt+" : "",
-                   tab & kCGEventFlagMaskControl ? "ctrl+" : "",
-                   tab & kCGEventFlagMaskShift ? "shift+" : "");
-            print_key(b->tab.keycode);
-            printf("\n");
-        } else {
-            printf("none\n");
+static void print_combo(const struct combo *c) {
+    if (print_mods(c->mods, "+")) printf("+");
+    print_key(c->keycode);
+}
+
+static void print_binding(const struct binding *b) {
+    if (b->tap) {
+        if (print_mods(b->mods, " + ")) printf(" + ");
+        printf("hyper : ");
+    } else {
+        printf("hyper");
+        if (b->mods) {
+            printf(" + ");
+            print_mods(b->mods, " + ");
         }
+        printf(" - ");
+        print_key(b->keycode);
+        printf(" : ");
+    }
+
+    const char *dir = b->reverse ? "prev" : "next";
+    switch (b->action) {
+    case ACTION_SPACE_BACK: printf("space back\n"); break;
+    case ACTION_SPACE_CYCLE: printf("space cycle%s\n", b->reverse ? " prev" : ""); break;
+    case ACTION_DESKTOP: printf("desktop\n"); break;
+    case ACTION_TAB: printf("tab %s\n", dir); break;
+    case ACTION_WINDOW: printf("window %s\n", dir); break;
+    case ACTION_KEY:
+        printf("key ");
+        print_combo(&b->key);
+        printf("\n");
         break;
+    case ACTION_APP: {
+        printf("app %s ; tab ", b->arg);
+        const struct combo *tab = config_app_tab(config, b);
+        if (tab) print_combo(tab);
+        else printf("none");
+        printf("\n");
+        break;
+    }
     case ACTION_EXEC: printf("exec %s\n", b->arg); break;
     }
 }
 
+static void print_settings(const struct config *c) {
+    printf("set tab ");
+    print_combo(&c->default_tab);
+    printf("\nset tap-ms %d\nset app-window-mod ", c->tap_ms);
+    if (!print_mods(c->app_window_mods, "+")) printf("none");
+    printf("\n");
+}
+
 static void on_hotkey(uint16_t keycode, CGEventFlags mods, void *ctx) {
     (void)ctx;
-    const struct binding *b = config_find(config, keycode, mods);
+    // Actions run later on the work queue; a reload frees the old config only
+    // after work already queued, so this pointer stays valid for them.
+    const struct config *c = config;
+    const struct binding *b = config_find(c, keycode, mods);
 
-    // Hyper + cmd + an app's key cycles that app's windows, unless the combo
-    // is bound to something itself.
+    // Hyper + "set app-window-mod" + an app's key cycles that app's windows,
+    // unless the combo is bound to something itself.
     const struct binding *app = NULL;
-    if (!b && mods == kCGEventFlagMaskCommand) {
-        app = config_find(config, keycode, 0);
+    if (!b && c->app_window_mods && (mods & TAP_MOD_MASK) == c->app_window_mods) {
+        app = config_find(c, keycode, 0);
         if (app && app->action != ACTION_APP) app = NULL;
     }
 
@@ -131,7 +168,7 @@ static void on_hotkey(uint16_t keycode, CGEventFlags mods, void *ctx) {
     if (b) {
         dispatch_async(work, ^{
             if (debug) print_binding(b);
-            action_run(b);
+            action_run(c, b);
         });
     } else if (app) {
         dispatch_async(work, ^{ apps_next_window(app->arg); });
@@ -146,13 +183,26 @@ static void load_layout(void) {
 
 static void on_release(void *ctx) {
     (void)ctx;
-    dispatch_async(work, ^{ apps_release_held(); });
+    dispatch_async(work, ^{ apps_hyper_released(); });
 }
 
-static void on_tap(void *ctx) {
+static void on_mods(CGEventFlags mods, void *ctx) {
     (void)ctx;
-    debugf("hotkey: hyper tapped alone -> last used space");
-    dispatch_async(work, ^{ switch_back(); });
+    dispatch_async(work, ^{ apps_mods_changed(mods); });
+}
+
+// Hyper tapped: runs the tap line for the modifiers held ("cmd + hyper : ...").
+static void on_tap(CGEventFlags mods, void *ctx) {
+    (void)ctx;
+    const struct config *c = config;  // see on_hotkey
+    const struct binding *b = config_find_tap(c, mods);
+    debugf("hotkey: hyper tapped, mods 0x%08llx -> %s", (unsigned long long)mods,
+           b ? "bound" : "no binding");
+    if (!b) return;
+    dispatch_async(work, ^{
+        if (debug) print_binding(b);
+        action_run(c, b);
+    });
 }
 
 // Space changes made outside workspeed (trackpad, Mission Control, clicking an
@@ -178,6 +228,7 @@ static void reload_config(void) {
     }
     struct config *old = config;
     config = fresh;
+    tap_set_tap_ms(config->tap_ms);
     // Actions already queued still point into the old config; free it after them.
     dispatch_async(work, ^{ config_free(old); });
     printf("workspeed: reloaded %s (%zu bindings)\n", config_path, config->count);
@@ -224,6 +275,7 @@ int main(int argc, char *argv[]) {
     config = config_load(config_path);
     if (!config) return 1;
     if (check_only) {
+        print_settings(config);
         for (size_t i = 0; i < config->count; i++) print_binding(&config->bindings[i]);
         printf("workspeed: %s is valid (%zu bindings)\n", config_path, config->count);
         config_free(config);
@@ -240,7 +292,8 @@ int main(int argc, char *argv[]) {
 
     work = dispatch_queue_create("workspeed.work", DISPATCH_QUEUE_SERIAL);
     tap_set_debug(debug);
-    if (!tap_start(on_hotkey, on_tap, on_release, NULL)) {
+    tap_set_tap_ms(config->tap_ms);
+    if (!tap_start(on_hotkey, on_tap, on_release, on_mods, NULL)) {
         fprintf(stderr, "workspeed: cannot create event tap\n");
         return 1;
     }

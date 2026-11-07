@@ -7,8 +7,9 @@
 // Control's left-to-right order, fullscreen spaces included, as --list shows.
 // Only within the current display. Blocks until the switch has landed.
 bool switch_to(int index);
-bool switch_prev(void);
-bool switch_next(void);
+
+// Next (or previous) space on the current display, wrapping around at the ends.
+bool switch_cycle(bool reverse);
 
 // Switches to the first space on the current display without a fullscreen app.
 bool switch_desktop(void);

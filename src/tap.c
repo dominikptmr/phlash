@@ -5,19 +5,21 @@
 #include <stdio.h>
 #include <time.h>
 
-// Releasing Hyper within this time, with nothing pressed in between, is a tap.
-#define TAP_NS 300000000ULL
+// Releasing Hyper within this time, with no other key pressed in between, is a
+// tap. Modifiers don't count as other keys: cmd/option/ctrl + tap are gestures.
+static uint64_t tap_ns = 300 * 1000000ULL;
 
 static CFMachPortRef port;
 static CFRunLoopSourceRef source;
 static tap_hotkey_fn hotkey_fn;
 static tap_alone_fn alone_fn;
 static tap_release_fn release_fn;
+static tap_mods_fn mods_fn;
 static void *hotkey_ctx;
 
 static bool debug;
 static bool hyper_down;
-static bool hyper_used;         // another key or modifier was pressed while Hyper was held
+static bool hyper_used;         // another (non-modifier) key was pressed while Hyper was held
 // Our own clock: CGEvent timestamps are mach ticks on Apple silicon, not ns.
 static uint64_t hyper_down_at;
 // Keys whose key-down we swallowed, so their key-up is swallowed too even if
@@ -34,8 +36,8 @@ static void on_hyper(CGEventRef event, bool down) {
         return;
     }
     hyper_down = false;
-    if (!hyper_used && clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - hyper_down_at < TAP_NS) {
-        alone_fn(hotkey_ctx);
+    if (!hyper_used && clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - hyper_down_at < tap_ns) {
+        alone_fn(CGEventGetFlags(event) & TAP_MOD_MASK, hotkey_ctx);
     }
     release_fn(hotkey_ctx);
 }
@@ -73,7 +75,7 @@ static CGEventRef callback(CGEventTapProxy proxy, CGEventType type, CGEventRef e
     }
 
     if (type == kCGEventFlagsChanged) {
-        if (hyper_down) hyper_used = true;
+        mods_fn(CGEventGetFlags(event) & TAP_MOD_MASK, hotkey_ctx);
         return event;
     }
     if (type != kCGEventKeyDown && type != kCGEventKeyUp) return event;
@@ -103,10 +105,12 @@ static CGEventRef callback(CGEventTapProxy proxy, CGEventType type, CGEventRef e
     return NULL;
 }
 
-bool tap_start(tap_hotkey_fn fn, tap_alone_fn alone, tap_release_fn release, void *ctx) {
+bool tap_start(tap_hotkey_fn fn, tap_alone_fn alone, tap_release_fn release, tap_mods_fn mods,
+               void *ctx) {
     hotkey_fn = fn;
     alone_fn = alone;
     release_fn = release;
+    mods_fn = mods;
     hotkey_ctx = ctx;
 
     CGEventMask mask = CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventKeyUp) |
@@ -119,6 +123,10 @@ bool tap_start(tap_hotkey_fn fn, tap_alone_fn alone, tap_release_fn release, voi
     CFRunLoopAddSource(CFRunLoopGetCurrent(), source, kCFRunLoopCommonModes);
     CGEventTapEnable(port, true);
     return true;
+}
+
+void tap_set_tap_ms(int ms) {
+    tap_ns = (uint64_t)ms * 1000000ULL;
 }
 
 void tap_set_debug(bool on) {
