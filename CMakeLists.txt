@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(workspeed C)
+project(phlash C)
 
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -7,8 +7,8 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 # "-" signs ad hoc: fine while running from CLion (TCC attributes permissions to
 # CLion), but every rebuild changes the signature. Set this to a self-signed
-# code-signing certificate's name before running workspeed on its own.
-set(WORKSPEED_SIGN_IDENTITY "-" CACHE STRING "codesign identity for workspeed")
+# code-signing certificate's name before running phlash on its own.
+set(PHLASH_SIGN_IDENTITY "-" CACHE STRING "codesign identity for phlash")
 
 # InstantSpaceSwitcher's switching core, vendored unmodified (see its README).
 # Built on its own so upstream code keeps upstream's dialect and warnings.
@@ -22,7 +22,7 @@ target_link_libraries(iss PUBLIC
         "-framework CoreGraphics"
         "-framework ApplicationServices")
 
-add_executable(workspeed
+add_executable(phlash
         src/main.c
         src/tap.c
         src/keys.c
@@ -37,22 +37,22 @@ add_executable(workspeed
         src/proc.c
         src/capslock.c)
 
-target_include_directories(workspeed PRIVATE include)
+target_include_directories(phlash PRIVATE include)
 
-target_compile_options(workspeed PRIVATE
+target_compile_options(phlash PRIVATE
         -Wall -Wextra -Wpedantic
         $<$<CONFIG:Debug>:-fsanitize=address,undefined>)
-target_link_options(workspeed PRIVATE
+target_link_options(phlash PRIVATE
         $<$<CONFIG:Debug>:-fsanitize=address,undefined>)
 
-target_link_libraries(workspeed PRIVATE
+target_link_libraries(phlash PRIVATE
         iss
         "-framework Carbon"
         "-framework CoreFoundation"
         "-framework CoreGraphics"
         "-framework ApplicationServices")
 
-add_custom_command(TARGET workspeed POST_BUILD
-        COMMAND codesign --force --sign "${WORKSPEED_SIGN_IDENTITY}"
-                --identifier workspeed $<TARGET_FILE:workspeed>
+add_custom_command(TARGET phlash POST_BUILD
+        COMMAND codesign --force --sign "${PHLASH_SIGN_IDENTITY}"
+                --identifier phlash $<TARGET_FILE:phlash>
         VERBATIM)

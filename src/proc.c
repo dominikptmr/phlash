@@ -18,7 +18,7 @@ static bool start(const char *path, char *const argv[], bool quiet, pid_t *pid) 
     int err = posix_spawn(pid, path, &actions, NULL, argv, environ);
     posix_spawn_file_actions_destroy(&actions);
     if (err != 0) {
-        fprintf(stderr, "workspeed: cannot run %s: %s\n", path, strerror(err));
+        fprintf(stderr, "phlash: cannot run %s: %s\n", path, strerror(err));
         return false;
     }
     return true;
@@ -30,7 +30,7 @@ bool proc_run(const char *path, char *const argv[], bool quiet) {
 
     int status;
     if (waitpid(pid, &status, 0) < 0 || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-        fprintf(stderr, "workspeed: %s failed\n", path);
+        fprintf(stderr, "phlash: %s failed\n", path);
         return false;
     }
     return true;

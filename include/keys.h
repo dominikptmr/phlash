@@ -1,5 +1,5 @@
-#ifndef WORKSPEED_KEYS_H
-#define WORKSPEED_KEYS_H
+#ifndef PHLASH_KEYS_H
+#define PHLASH_KEYS_H
 
 #include <stdbool.h>
 #include <stdint.h>

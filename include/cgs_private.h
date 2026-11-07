@@ -1,5 +1,5 @@
-#ifndef WORKSPEED_CGS_PRIVATE_H
-#define WORKSPEED_CGS_PRIVATE_H
+#ifndef PHLASH_CGS_PRIVATE_H
+#define PHLASH_CGS_PRIVATE_H
 
 // Private SkyLight (CGS) calls, re-exported by CoreGraphics. Read-only queries
 // that work with SIP enabled; the same ones yabai uses for its queries.

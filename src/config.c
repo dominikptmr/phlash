@@ -41,7 +41,7 @@
 const char *config_default_path(void) {
     static char path[PATH_MAX];
     const char *home = getenv("HOME");
-    snprintf(path, sizeof path, "%s/.config/workspeed/config", home ? home : "");
+    snprintf(path, sizeof path, "%s/.config/phlash/config", home ? home : "");
     return path;
 }
 
@@ -268,7 +268,7 @@ static bool already_bound(const struct config *config, const struct binding *b) 
 struct config *config_load(const char *path) {
     FILE *file = fopen(path, "r");
     if (!file) {
-        fprintf(stderr, "workspeed: %s: %s\n", path, strerror(errno));
+        fprintf(stderr, "phlash: %s: %s\n", path, strerror(errno));
         return NULL;
     }
 
@@ -302,7 +302,7 @@ struct config *config_load(const char *path) {
         }
 
         if (err) {
-            fprintf(stderr, "workspeed: %s:%d: %s\n", path, lineno, err);
+            fprintf(stderr, "phlash: %s:%d: %s\n", path, lineno, err);
             free(b.arg);
             errors++;
             continue;

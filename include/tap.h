@@ -1,13 +1,13 @@
-#ifndef WORKSPEED_TAP_H
-#define WORKSPEED_TAP_H
+#ifndef PHLASH_TAP_H
+#define PHLASH_TAP_H
 
 #include <ApplicationServices/ApplicationServices.h>
 #include <stdbool.h>
 #include <stdint.h>
 
-// Marks events workspeed posts itself (in kCGEventSourceUserData); the tap
+// Marks events phlash posts itself (in kCGEventSourceUserData); the tap
 // lets them through untouched.
-#define TAP_SYNTHETIC 0x77737064  // "wspd"
+#define TAP_SYNTHETIC 0x70686c73  // "phls"
 
 // Modifier flags that can be combined with Hyper.
 #define TAP_MOD_MASK (kCGEventFlagMaskCommand | kCGEventFlagMaskAlternate | \

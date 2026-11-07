@@ -1,5 +1,5 @@
-#ifndef WORKSPEED_CONFIG_H
-#define WORKSPEED_CONFIG_H
+#ifndef PHLASH_CONFIG_H
+#define PHLASH_CONFIG_H
 
 #include <CoreGraphics/CoreGraphics.h>
 #include <stdbool.h>
@@ -47,7 +47,7 @@ struct config {
     CGEventFlags app_window_mods;  // "set app-window-mod"; 0 = off (the default)
 };
 
-// Default location: ~/.config/workspeed/config. Returned string is static.
+// Default location: ~/.config/phlash/config. Returned string is static.
 const char *config_default_path(void);
 
 // Parses the file at path. Prints every error with its line number to stderr

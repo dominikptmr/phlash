@@ -1,5 +1,5 @@
-#ifndef WORKSPEED_SWITCH_H
-#define WORKSPEED_SWITCH_H
+#ifndef PHLASH_SWITCH_H
+#define PHLASH_SWITCH_H
 
 #include <stdbool.h>
 

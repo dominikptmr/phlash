@@ -1,5 +1,5 @@
-#ifndef WORKSPEED_APPS_H
-#define WORKSPEED_APPS_H
+#ifndef PHLASH_APPS_H
+#define PHLASH_APPS_H
 
 #include "config.h"
 #include "windows.h"

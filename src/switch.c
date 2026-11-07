@@ -42,11 +42,11 @@ bool switch_to(int index) {
     struct space spaces[SPACES_MAX];
     size_t count = spaces_get(spaces);
     if (count == 0) {
-        fprintf(stderr, "workspeed: cannot read the space list\n");
+        fprintf(stderr, "phlash: cannot read the space list\n");
         return false;
     }
     if (index < 1 || (size_t)index > count) {
-        printf("workspeed: space %d doesn't exist (%zu spaces)\n", index, count);
+        printf("phlash: space %d doesn't exist (%zu spaces)\n", index, count);
         return false;
     }
 
@@ -54,12 +54,12 @@ bool switch_to(int index) {
     int current = spaces_index(spaces, count, spaces_active());
     if (current == index) return true;
     if (current == 0) {
-        fprintf(stderr, "workspeed: cannot find the current space\n");
+        fprintf(stderr, "phlash: cannot find the current space\n");
         return false;
     }
     const struct space *target = &spaces[index - 1];
     if (target->display != spaces[current - 1].display) {
-        printf("workspeed: space %d is on another display\n", index);
+        printf("phlash: space %d is on another display\n", index);
         return false;
     }
 
@@ -69,7 +69,7 @@ bool switch_to(int index) {
         if (spaces[i].display == target->display) local++;
     }
     if (!iss_switch_to_index(local)) {
-        fprintf(stderr, "workspeed: switching to space %d failed\n", index);
+        fprintf(stderr, "phlash: switching to space %d failed\n", index);
         return false;
     }
     wait_for_space(target->id);
@@ -106,7 +106,7 @@ bool switch_desktop(void) {
             return switch_to((int)i + 1);
         }
     }
-    printf("workspeed: no desktop space on this display\n");
+    printf("phlash: no desktop space on this display\n");
     return false;
 }
 
@@ -119,7 +119,7 @@ bool switch_back(void) {
     int index = spaces_index(spaces, count, previous_id);
     if (!index) {
         // Its fullscreen app was closed, or it was removed in Mission Control.
-        printf("workspeed: the last used space is gone\n");
+        printf("phlash: the last used space is gone\n");
         previous_id = 0;
         return false;
     }

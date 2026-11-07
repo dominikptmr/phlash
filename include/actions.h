@@ -1,5 +1,5 @@
-#ifndef WORKSPEED_ACTIONS_H
-#define WORKSPEED_ACTIONS_H
+#ifndef PHLASH_ACTIONS_H
+#define PHLASH_ACTIONS_H
 
 #include "config.h"
 

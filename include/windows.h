@@ -1,5 +1,5 @@
-#ifndef WORKSPEED_WINDOWS_H
-#define WORKSPEED_WINDOWS_H
+#ifndef PHLASH_WINDOWS_H
+#define PHLASH_WINDOWS_H
 
 #include <stddef.h>
 #include <stdint.h>

@@ -56,7 +56,7 @@ static CGEventRef callback(CGEventTapProxy proxy, CGEventType type, CGEventRef e
         return event;
     }
 
-    // Keys workspeed types itself (like an app's next-tab shortcut, sent while
+    // Keys phlash types itself (like an app's next-tab shortcut, sent while
     // Hyper is still held) must reach the app, not be swallowed as a combo.
     if (CGEventGetIntegerValueField(event, kCGEventSourceUserData) == TAP_SYNTHETIC) return event;
 

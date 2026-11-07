@@ -1,19 +1,19 @@
 # InstantSpaceSwitcher (vendored)
 
 The space-switching core of [InstantSpaceSwitcher](https://github.com/jurplel/InstantSpaceSwitcher)
-by jurplel, MIT licensed (see [LICENSE](LICENSE)). workspeed calls it in-process
+by jurplel, MIT licensed (see [LICENSE](LICENSE)). phlash calls it in-process
 instead of launching `ISSCli`, which cost 90–150 ms of startup plus a 300 ms wait
 per switch.
 
 **Do not edit these files.** They are upstream's, unmodified, so an update is a
-plain copy and anything local lives in workspeed's own code (`src/switch.c`).
+plain copy and anything local lives in phlash's own code (`src/switch.c`).
 
 | | |
 |---|---|
 | Upstream commit | `f7616e42651b1ed8d81625e3640eceed6efa8018` (2026-10-05, "update version + build on xcode 27") |
 | Files | `Sources/ISS/ISS.c`, `event_serialize.c`, `event_serialize.h`, `include/ISS.h`, `LICENSE` |
 
-workspeed uses only `iss_switch_to_index()`. It doesn't call `iss_init()`, which
+phlash uses only `iss_switch_to_index()`. It doesn't call `iss_init()`, which
 would add ISS's own event tap for its trackpad-swipe override.
 
 ## Updating

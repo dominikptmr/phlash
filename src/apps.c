@@ -267,7 +267,7 @@ void apps_focus(const char *spec, const struct combo *next_tab) {
         debugf("app: %s has a window on space %llu (pid %d), focusing", names[i],
                (unsigned long long)w.space, w.pid);
         switch_to_space_of(w.space);
-        if (!activate(w.pid)) fprintf(stderr, "workspeed: cannot activate %s\n", names[i]);
+        if (!activate(w.pid)) fprintf(stderr, "phlash: cannot activate %s\n", names[i]);
         return;
     }
     // Apps that aren't open, or only minimized, are left alone for now.

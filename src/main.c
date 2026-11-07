@@ -28,19 +28,19 @@ static bool debug;
 
 static void usage(FILE *out) {
     fprintf(out,
-            "usage: workspeed [--config PATH] [--check] [--list] [--debug]\n"
+            "usage: phlash [--config PATH] [--check] [--list] [--debug]\n"
             "\n"
-            "  --config PATH  config file (default ~/.config/workspeed/config)\n"
+            "  --config PATH  config file (default ~/.config/phlash/config)\n"
             "  --check        check the config file and exit\n"
             "  --list         list spaces (* = current) and the apps on them, then exit\n"
             "  --debug        log every key event and hotkey to stderr/stdout\n"
             "\n"
-            "Caps lock becomes Hyper while workspeed runs. What Hyper + key and tapping\n"
+            "Caps lock becomes Hyper while phlash runs. What Hyper + key and tapping\n"
             "Hyper (alone or with modifiers held) do comes from the config.\n"
             "Send SIGHUP to reload the config.\n");
 }
 
-// Asks once (which also adds workspeed to the Accessibility list), then waits
+// Asks once (which also adds phlash to the Accessibility list), then waits
 // for the grant instead of exiting, so launchd doesn't restart us into a loop
 // of prompts.
 static void wait_for_accessibility(void) {
@@ -53,10 +53,10 @@ static void wait_for_accessibility(void) {
     CFRelease(options);
     if (trusted) return;
 
-    fprintf(stderr, "workspeed: waiting for Accessibility permission (System Settings → "
+    fprintf(stderr, "phlash: waiting for Accessibility permission (System Settings → "
                     "Privacy & Security → Accessibility)\n");
     while (!AXIsProcessTrusted()) sleep(2);
-    fprintf(stderr, "workspeed: Accessibility permission granted\n");
+    fprintf(stderr, "phlash: Accessibility permission granted\n");
 }
 
 // Two instances (say the LaunchAgent and one started from CLion) would both
@@ -65,7 +65,7 @@ static bool lock_single_instance(void) {
     char path[PATH_MAX];
     size_t len = confstr(_CS_DARWIN_USER_TEMP_DIR, path, sizeof path);
     if (len == 0 || len > sizeof path) snprintf(path, sizeof path, "/tmp/");
-    strlcat(path, "workspeed.lock", sizeof path);
+    strlcat(path, "phlash.lock", sizeof path);
 
     // O_CLOEXEC: apps started by exec bindings must not inherit the lock.
     int fd = open(path, O_RDWR | O_CREAT | O_CLOEXEC, 0600);
@@ -177,7 +177,7 @@ static void on_hotkey(uint16_t keycode, CGEventFlags mods, void *ctx) {
 
 static void load_layout(void) {
     if (!keys_load_layout()) {
-        fprintf(stderr, "workspeed: cannot read the keyboard layout, using US key names\n");
+        fprintf(stderr, "phlash: cannot read the keyboard layout, using US key names\n");
     }
 }
 
@@ -205,7 +205,7 @@ static void on_tap(CGEventFlags mods, void *ctx) {
     });
 }
 
-// Space changes made outside workspeed (trackpad, Mission Control, clicking an
+// Space changes made outside phlash (trackpad, Mission Control, clicking an
 // app) aren't announced to us, so look at the active space a few times a second.
 // One cheap window server query; the leeway lets macOS batch the wakeups.
 #define TRACK_INTERVAL_MS 100
@@ -223,7 +223,7 @@ static void reload_config(void) {
     load_layout();
     struct config *fresh = config_load(config_path);
     if (!fresh) {
-        fprintf(stderr, "workspeed: keeping the previous config\n");
+        fprintf(stderr, "phlash: keeping the previous config\n");
         return;
     }
     struct config *old = config;
@@ -231,7 +231,7 @@ static void reload_config(void) {
     tap_set_tap_ms(config->tap_ms);
     // Actions already queued still point into the old config; free it after them.
     dispatch_async(work, ^{ config_free(old); });
-    printf("workspeed: reloaded %s (%zu bindings)\n", config_path, config->count);
+    printf("phlash: reloaded %s (%zu bindings)\n", config_path, config->count);
 }
 
 static void on_signal(int sig, void (*handler)(void)) {
@@ -277,24 +277,24 @@ int main(int argc, char *argv[]) {
     if (check_only) {
         print_settings(config);
         for (size_t i = 0; i < config->count; i++) print_binding(&config->bindings[i]);
-        printf("workspeed: %s is valid (%zu bindings)\n", config_path, config->count);
+        printf("phlash: %s is valid (%zu bindings)\n", config_path, config->count);
         config_free(config);
         return 0;
     }
 
     if (!lock_single_instance()) {
         // Exit 0 so the LaunchAgent doesn't keep restarting us while the other runs.
-        fprintf(stderr, "workspeed: already running\n");
+        fprintf(stderr, "phlash: already running\n");
         config_free(config);
         return 0;
     }
     wait_for_accessibility();
 
-    work = dispatch_queue_create("workspeed.work", DISPATCH_QUEUE_SERIAL);
+    work = dispatch_queue_create("phlash.work", DISPATCH_QUEUE_SERIAL);
     tap_set_debug(debug);
     tap_set_tap_ms(config->tap_ms);
     if (!tap_start(on_hotkey, on_tap, on_release, on_mods, NULL)) {
-        fprintf(stderr, "workspeed: cannot create event tap\n");
+        fprintf(stderr, "phlash: cannot create event tap\n");
         return 1;
     }
     if (!capslock_remap()) {
@@ -310,13 +310,13 @@ int main(int argc, char *argv[]) {
     on_signal(SIGTERM, stop);
     on_signal(SIGHUP, reload_config);
 
-    printf("workspeed: running with %s (%zu bindings)\n", config_path, config->count);
+    printf("phlash: running with %s (%zu bindings)\n", config_path, config->count);
     CFRunLoopRun();
 
     capslock_restore();
     tap_stop();
     // Don't leave a tab shortcut's modifier logically held after we're gone.
     dispatch_sync(work, ^{ apps_release_held(); });
-    printf("workspeed: stopped\n");
+    printf("phlash: stopped\n");
     return 0;
 }

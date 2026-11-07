@@ -1,6 +1,6 @@
-# workspeed config — copy to ~/.config/workspeed/config
-# Everything workspeed does comes from here: a line that's missing does nothing.
-# Reload after editing: pkill -HUP workspeed   Check: workspeed --check
+# phlash config — copy to ~/.config/phlash/config
+# Everything phlash does comes from here: a line that's missing does nothing.
+# Reload after editing: pkill -HUP phlash   Check: phlash --check
 #
 #   hyper [+ mod ...] - key : action       hold caps lock (Hyper), press key
 #   [mod + ...] hyper : action             tap caps lock while holding mods
@@ -14,7 +14,7 @@
 # Actions
 #   app <name>          jump instantly to the app's window, wherever its
 #                       fullscreen space has moved to. Nothing happens if it has
-#                       no open window. The name is what `workspeed --list`
+#                       no open window. The name is what `phlash --list`
 #                       shows or the .app's name. "app A | B | C" picks the first
 #                       one with a window open. Pressing the key again while the
 #                       app is in front goes to its next tab ("; tab <shortcut>"

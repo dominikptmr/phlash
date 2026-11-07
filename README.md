@@ -1,9 +1,9 @@
-# workspeed
+# phlash
 
 Keyboard-driven macOS Spaces: caps lock becomes Hyper, Hyper + key jumps instantly
 (no animation) to whichever space an app is on.
 
-Everything it does is set in `~/.config/workspeed/config` (see
+Everything it does is set in `~/.config/phlash/config` (see
 [config.example](config.example)):
 
 - **Hyper + key** (caps lock held): `app NAME` jumps to the app's window on any
@@ -32,32 +32,32 @@ Everything it does is set in `~/.config/workspeed/config` (see
 1. **Code-signing certificate** (once). Keeps the Accessibility grant across rebuilds.
    Open Keychain Access (`open -a "Keychain Access"`), then
    Keychain Access menu → Certificate Assistant → Create a Certificate…
-   - Name: `workspeed-cert`
+   - Name: `phlash-cert`
    - Identity Type: Self Signed Root
    - Certificate Type: Code Signing
 
    Without it, `install.sh` signs ad hoc and you re-grant Accessibility after every install.
 
-2. **Install and start** (also creates `~/.config/workspeed/config` if missing):
+2. **Install and start** (also creates `~/.config/phlash/config` if missing):
 
    ```bash
    scripts/install.sh
    ```
 
 3. **Permissions.** macOS asks for Accessibility on first start: enable
-   `workspeed` in System Settings → Privacy & Security → Accessibility. workspeed
+   `phlash` in System Settings → Privacy & Security → Accessibility. phlash
    waits and starts working as soon as it's granted.
 
 ## Day to day
 
 | Task | Command |
 |---|---|
-| Reload config after editing | `pkill -HUP workspeed` |
-| Check config | `~/.local/bin/workspeed --check` |
-| See spaces and their apps | `~/.local/bin/workspeed --list` |
-| Log | `tail -f ~/Library/Logs/workspeed.log` |
-| Restart | `launchctl kickstart -k gui/$(id -u)/local.workspeed` |
-| Stop until next login | `launchctl bootout gui/$(id -u)/local.workspeed` |
+| Reload config after editing | `pkill -HUP phlash` |
+| Check config | `~/.local/bin/phlash --check` |
+| See spaces and their apps | `~/.local/bin/phlash --list` |
+| Log | `tail -f ~/Library/Logs/phlash.log` |
+| Restart | `launchctl kickstart -k gui/$(id -u)/local.phlash` |
+| Stop until next login | `launchctl bootout gui/$(id -u)/local.phlash` |
 | Update after code changes | `scripts/install.sh` |
 | Uninstall | `scripts/uninstall.sh` |
 
@@ -66,10 +66,10 @@ If caps lock ever stays dead after a crash:
 
 ## Development
 
-Only one workspeed runs at a time; a second one exits with "already running". To
+Only one phlash runs at a time; a second one exits with "already running". To
 run from CLion, stop the installed one first (`launchctl bootout …` above) and
 start it again afterwards with `scripts/install.sh` or
-`launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.workspeed.plist`.
+`launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.phlash.plist`.
 
 Run with `--debug` to log every key event and triggered hotkey.
 

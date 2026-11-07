@@ -1,5 +1,5 @@
-#ifndef WORKSPEED_LOG_H
-#define WORKSPEED_LOG_H
+#ifndef PHLASH_LOG_H
+#define PHLASH_LOG_H
 
 #include <stdbool.h>
 

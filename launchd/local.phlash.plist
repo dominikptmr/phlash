@@ -4,7 +4,7 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>local.workspeed</string>
+    <string>local.phlash</string>
     <key>ProgramArguments</key>
     <array>
         <string>@BIN@</string>

@@ -1,5 +1,5 @@
-#ifndef WORKSPEED_PROC_H
-#define WORKSPEED_PROC_H
+#ifndef PHLASH_PROC_H
+#define PHLASH_PROC_H
 
 #include <stdbool.h>
 

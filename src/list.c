@@ -30,7 +30,7 @@ void list_print(void) {
     struct space spaces[SPACES_MAX];
     size_t space_count = spaces_get(spaces);
     if (space_count == 0) {
-        fprintf(stderr, "workspeed: cannot read the space list\n");
+        fprintf(stderr, "phlash: cannot read the space list\n");
         return;
     }
     static struct window windows[WINDOWS_MAX];

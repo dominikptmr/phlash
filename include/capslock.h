@@ -1,5 +1,5 @@
-#ifndef WORKSPEED_CAPSLOCK_H
-#define WORKSPEED_CAPSLOCK_H
+#ifndef PHLASH_CAPSLOCK_H
+#define PHLASH_CAPSLOCK_H
 
 #include <stdbool.h>
 
