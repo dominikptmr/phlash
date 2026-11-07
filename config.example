@@ -51,7 +51,7 @@ ctrl + hyper : window next
 ctrl + shift + hyper : window prev
 
 # apps: grid on the left hand, most used on the home row
-hyper - q : app awork
+hyper - q : app awork | Things3
 hyper - w : app Slack
 hyper - e : app Calendar
 
