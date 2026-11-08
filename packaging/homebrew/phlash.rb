@@ -45,6 +45,10 @@ class Phlash < Formula
       caps lock rules) and turn off System Settings → Desktop & Dock →
       "Automatically rearrange Spaces based on most recent use".
 
+      Caps lock must not be set to "No Action": System Settings → Keyboard →
+      Keyboard Shortcuts… → Modifier Keys, for each keyboard set Caps Lock to
+      ⇪ Caps Lock. Otherwise macOS drops the key before phlash sees it.
+
       Log: #{var}/log/phlash.log
     EOS
   end

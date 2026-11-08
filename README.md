@@ -26,6 +26,10 @@ Everything it does is set in `~/.config/phlash/config` (see
 - System Settings → Desktop & Dock → Mission Control: turn off
   **Automatically rearrange Spaces based on most recent use**.
 - No other caps lock remapper running (Hyperkey, Karabiner caps lock rules).
+- Caps lock must not be set to **No Action**: System Settings → Keyboard →
+  Keyboard Shortcuts… → Modifier Keys, for each keyboard under *Select keyboard*,
+  **Caps Lock (⇪) key** = ⇪ Caps Lock. Hyperkey setups often change this, and
+  macOS then drops caps lock before phlash sees it (every other key works).
 
 ## Install
 
@@ -58,7 +62,8 @@ named `phlash-cert` (Keychain Access → Certificate Assistant → Create a
 Certificate…, Self Signed Root, Code Signing), the Accessibility grant survives
 reinstalls; without it, `install.sh` signs ad hoc.
 
-If caps lock ever stays dead after a crash:
+If phlash runs but caps lock does nothing, check the Modifier Keys setting under
+Requirements. If caps lock ever stays dead after a crash:
 `hidutil property --set '{"UserKeyMapping":[]}'`
 
 ## Development
