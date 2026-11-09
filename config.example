@@ -32,8 +32,9 @@
 # Settings
 #   set tab <shortcut>        next-tab shortcut for apps without "; tab"
 #   set tap-ms <50-1000>      how quickly caps lock must be released for a tap
-#   set app-window-mod <mods> Hyper + these + an app's key = that app's next
-#                             window ("none" turns it off)
+#   set app-window-mod <mods> Hyper + these + an app's key = next window of
+#                             that line's apps, fallbacks included, in config
+#                             order ("none" turns it off)
 #
 # Unbound Hyper combos and taps do nothing.
 
@@ -51,18 +52,18 @@ ctrl + hyper : window next
 ctrl + shift + hyper : window prev
 
 # apps: grid on the left hand, most used on the home row
-hyper - q : app awork | Things3
-hyper - w : app Slack
-hyper - e : app Calendar
+hyper - w : app awork | absence.io | Things3
+hyper - e : app Slack
+hyper - r : app Calendar
 
 hyper - a : desktop
-hyper - s : app Zen
+hyper - s : app Zen | Google Chrome
 hyper - d : app WebStorm | PhpStorm | CLion | Visual Studio Code ; tab ctrl+right
-hyper - f : app Claude
-hyper - g : app Ghostty
+hyper - f : app Claude | ChatGPT
+hyper - g : app Ghostty | Terminal
 
 hyper - y : app Finder
 hyper - x : app Mail
 
-# shortcuts for the app in front
-hyper - t : key cmd+t
+# open new tab
+hyper - tab : key cmd+t

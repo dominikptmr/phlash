@@ -278,12 +278,15 @@ void apps_focus(const char *spec, const struct combo *next_tab) {
 
 struct ordered {
     const struct window *w;
+    int group;          // position of the window's app in the binding's list
     int space_index;
 };
 
-// Mission Control order: by space, then by window ID within a space.
+// Config order of the apps, then Mission Control order: by space, then by
+// window ID within a space.
 static int compare_ordered(const void *a, const void *b) {
     const struct ordered *x = a, *y = b;
+    if (x->group != y->group) return x->group < y->group ? -1 : 1;
     if (x->space_index != y->space_index) return x->space_index < y->space_index ? -1 : 1;
     return x->w->id < y->w->id ? -1 : x->w->id > y->w->id;
 }
@@ -327,19 +330,23 @@ static void raise_window(pid_t pid, uint32_t id) {
     activate(pid);
 }
 
-// Switches to the app's next (or previous) window in Mission Control order:
-// by space, left to right, then by window ID, wrapping around.
-static void cycle_windows(pid_t pid, const char *label, bool reverse) {
-    struct space spaces[SPACES_MAX];
-    size_t space_count = spaces_get(spaces);
-    struct ordered list[WINDOWS_MAX];
-    size_t n = 0;
-    for (size_t i = 0; i < window_count; i++) {
-        if (windows[i].pid != pid || windows[i].space == 0) continue;
-        list[n].w = &windows[i];
-        list[n].space_index = spaces_index(spaces, space_count, windows[i].space);
-        n++;
+// Adds the windows on spaces that belong to pid (if name is NULL) or to the
+// app called name, tagged with group.
+static size_t add_windows(struct ordered *list, size_t n, pid_t pid, const char *name, int group,
+                          const struct space *spaces, size_t space_count) {
+    for (size_t i = 0; i < window_count && n < WINDOWS_MAX; i++) {
+        const struct window *w = &windows[i];
+        if (w->space == 0) continue;
+        if (name ? !name_matches(w->pid, w->app, name) : w->pid != pid) continue;
+        list[n++] = (struct ordered){w, group, spaces_index(spaces, space_count, w->space)};
     }
+    return n;
+}
+
+// Steps from the front app's focused window to the next (or previous) one in
+// list, wrapping around.
+static void cycle_windows(struct ordered *list, size_t n, pid_t front_pid, const char *label,
+                          bool reverse) {
     if (n < 2) {
         debugf("app: %s has no other window", label);
         return;
@@ -348,7 +355,7 @@ static void cycle_windows(pid_t pid, const char *label, bool reverse) {
 
     // Step from the focused window. Without a known focused window, the first
     // one on the active space counts as current.
-    uint32_t current = focused_window_id(pid);
+    uint32_t current = focused_window_id(front_pid);
     uint64_t active = spaces_active();
     size_t at = n;
     for (size_t i = 0; i < n && at == n; i++) {
@@ -376,12 +383,27 @@ void apps_next_window(const char *spec) {
         apps_focus(spec, NULL);  // not in front yet: just go there
         return;
     }
-    cycle_windows(pid, front, false);
+
+    // All the binding's apps, in config order: "WebStorm | PhpStorm" cycles
+    // through WebStorm's windows, then PhpStorm's.
+    struct space spaces[SPACES_MAX];
+    size_t space_count = spaces_get(spaces);
+    struct ordered list[WINDOWS_MAX];
+    size_t n = 0;
+    for (size_t i = 0; i < count; i++) {
+        n = add_windows(list, n, 0, names[i], (int)i, spaces, space_count);
+    }
+    cycle_windows(list, n, pid, spec, false);
 }
 
 void apps_cycle_window(bool reverse) {
     apps_release_held();
     refresh_windows();
     pid_t pid = frontmost_pid();
-    if (pid) cycle_windows(pid, "app in front", reverse);
+    if (!pid) return;
+    struct space spaces[SPACES_MAX];
+    size_t space_count = spaces_get(spaces);
+    struct ordered list[WINDOWS_MAX];
+    size_t n = add_windows(list, 0, pid, NULL, 0, spaces, space_count);
+    cycle_windows(list, n, pid, "app in front", reverse);
 }

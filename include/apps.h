@@ -45,8 +45,9 @@ void apps_send_key(const struct combo *c);
 // Next (or previous) window of whichever app is in front, across spaces.
 void apps_cycle_window(bool reverse);
 
-// If one of the spec's apps is in front, switches to its next window, in
-// Mission Control order (by space, left to right) and wrapping around.
+// If one of the spec's apps is in front, switches to the next window of all
+// the spec's apps: in config order of the apps, each app's windows in Mission
+// Control order (by space, left to right), wrapping around.
 // Otherwise the same as apps_focus without next_tab.
 void apps_next_window(const char *spec);
 
