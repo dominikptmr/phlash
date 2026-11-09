@@ -16,6 +16,7 @@
 #include <limits.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/file.h>
 #include <unistd.h>
@@ -42,22 +43,30 @@ static void usage(FILE *out) {
 }
 
 // Asks once (which also adds phlash to the Accessibility list), then waits
-// for the grant instead of exiting, so launchd doesn't restart us into a loop
-// of prompts.
-static void wait_for_accessibility(void) {
+// for the grant. A running process never sees the grant, so we restart
+// ourselves with exec every 2 s: same process for launchd, fresh permission
+// check. PHLASH_ASKED keeps the prompt and log line from repeating.
+static void wait_for_accessibility(char *argv[]) {
+    bool asked = getenv("PHLASH_ASKED") != NULL;
     const void *keys[] = {kAXTrustedCheckOptionPrompt};
-    const void *values[] = {kCFBooleanTrue};
+    const void *values[] = {asked ? kCFBooleanFalse : kCFBooleanTrue};
     CFDictionaryRef options = CFDictionaryCreate(kCFAllocatorDefault, keys, values, 1,
                                                  &kCFTypeDictionaryKeyCallBacks,
                                                  &kCFTypeDictionaryValueCallBacks);
     bool trusted = AXIsProcessTrustedWithOptions(options);
     CFRelease(options);
-    if (trusted) return;
+    if (trusted) {
+        if (asked) fprintf(stderr, "phlash: Accessibility permission granted\n");
+        return;
+    }
 
-    fprintf(stderr, "phlash: waiting for Accessibility permission (System Settings → "
-                    "Privacy & Security → Accessibility)\n");
-    while (!AXIsProcessTrusted()) sleep(2);
-    fprintf(stderr, "phlash: Accessibility permission granted\n");
+    if (!asked) fprintf(stderr, "phlash: waiting for Accessibility permission (System Settings → "
+                                "Privacy & Security → Accessibility)\n");
+    setenv("PHLASH_ASKED", "1", 1);
+    sleep(2);
+    execvp(argv[0], argv);
+    perror("phlash: restart failed");
+    exit(1);
 }
 
 // Two instances (say the LaunchAgent and one started from CLion) would both
@@ -297,7 +306,7 @@ int main(int argc, char *argv[]) {
         config_free(config);
         return 0;
     }
-    wait_for_accessibility();
+    wait_for_accessibility(argv);
 
     work = dispatch_queue_create("phlash.work", DISPATCH_QUEUE_SERIAL);
     tap_set_debug(debug);
