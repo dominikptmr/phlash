@@ -36,17 +36,11 @@ Space switching uses
 
 ## Install
 
-1. Create a signing certificate (once), so macOS keeps the Accessibility
-   permission across reinstalls:
-   - Open Keychain Access:
-     `open "/System/Library/CoreServices/Applications/Keychain Access.app"`
-   - Keychain Access → Certificate Assistant → Create a Certificate…
-   - Name `phlash-cert`, Identity Type **Self Signed Root**, Certificate Type
-     **Code Signing**
-2. Run `scripts/install.sh`. When `codesign` asks to use the key, click
-   **Always Allow**. phlash is installed to `~/.local/bin` and starts at login.
-3. System Settings → Privacy & Security → Accessibility: enable `phlash`.
-4. Restart phlash: `launchctl kickstart -k gui/$(id -u)/local.phlash`
+1. Run `scripts/install.sh`. On first run it creates a signing certificate
+   (`phlash-cert`), so macOS keeps the Accessibility permission across
+   reinstalls. When `codesign` asks to use the key, click **Always Allow**.
+2. System Settings → Privacy & Security → Accessibility: enable `phlash`.
+   phlash starts working within a few seconds.
 
 ## Usage
 

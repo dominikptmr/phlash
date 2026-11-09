@@ -26,12 +26,34 @@ fi
 
 # A real certificate keeps the code signature, and with it the Accessibility
 # grant, the same across rebuilds. Ad hoc signing works but loses the grant.
-if security find-identity -p codesigning | grep -q "\"$CERT\""; then
+has_cert() { security find-identity -p codesigning | grep -q "\"$CERT\""; }
+
+# Creates a self-signed code-signing certificate in the login keychain, the
+# same as Keychain Access → Certificate Assistant → Create a Certificate…
+create_cert() {
+    local dir
+    dir=$(mktemp -d)
+    openssl req -x509 -newkey rsa:2048 -nodes -days 3650 -subj "/CN=$CERT" \
+        -addext "extendedKeyUsage=critical,codeSigning" \
+        -addext "keyUsage=critical,digitalSignature" \
+        -keyout "$dir/key.pem" -out "$dir/cert.pem" 2>/dev/null
+    openssl pkcs12 -export -inkey "$dir/key.pem" -in "$dir/cert.pem" \
+        -out "$dir/cert.p12" -passout pass:phlash
+    security import "$dir/cert.p12" -P phlash -T /usr/bin/codesign >/dev/null
+    rm -rf "$dir"
+}
+
+if ! has_cert; then
+    echo "install: creating code-signing certificate '$CERT' in your login keychain"
+    create_cert || true
+fi
+
+if has_cert; then
     IDENTITY="$CERT"
 else
     IDENTITY="-"
-    echo "install: no '$CERT' certificate, signing ad hoc (see README:" \
-         "you'll have to re-grant Accessibility after every install)" >&2
+    echo "install: no '$CERT' certificate, signing ad hoc" \
+         "(you'll have to re-grant Accessibility after every install)" >&2
 fi
 
 "$CMAKE" -S . -B "$BUILD" -DCMAKE_BUILD_TYPE=Release -DPHLASH_SIGN_IDENTITY="$IDENTITY" >/dev/null
@@ -49,6 +71,9 @@ mkdir -p "$(dirname "$BIN")" "$(dirname "$PLIST")" "$(dirname "$LOG")"
 # Replace the file instead of overwriting it: the kernel caches code signatures
 # per file, and a signed binary rewritten in place gets killed on launch.
 cp "$BUILD/phlash" "$BIN.new"
+# Sign here too: CMake only signs when it relinks, so a new certificate with
+# unchanged code would otherwise keep the old signature.
+codesign --force --sign "$IDENTITY" --identifier phlash "$BIN.new"
 mv -f "$BIN.new" "$BIN"
 
 sed -e "s|@BIN@|$BIN|g" -e "s|@LOG@|$LOG|g" launchd/$LABEL.plist > "$PLIST"
