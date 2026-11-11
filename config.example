@@ -1,7 +1,8 @@
-# phlash config — copy to ~/.config/phlash/config
-# Everything phlash does comes from here: a line that's missing does nothing.
-# Reload after editing: pkill -HUP phlash   Check: phlash --check
-#
+# phlash config ~/.config/phlash/config
+# 
+# Start phlash: launchctl kickstart gui/$(id -u)/local.phlash
+# Reload after editing: pkill -HUP phlash   Check: ~/.local/bin/phlash --check
+# 
 #   hyper [+ mod ...] - key : action       hold caps lock (Hyper), press key
 #   [mod + ...] hyper : action             tap caps lock while holding mods
 #   <modifier> : action                    tap a modifier on its own (the
@@ -28,26 +29,38 @@
 #   space cycle [prev]  next / previous space, wrapping around
 #   tab next | prev     tab of the app in front. On a tap line, the tab switcher
 #                       stays open until you let go of the line's modifiers
-#                       (shift aside); on a Hyper + key line, until Hyper.
+#                       (shift aside); on a Hyper + key line, until Hyper; on a
+#                       modifier tap line it closes right away.
 #   window next | prev  window of the app in front, across spaces
 #   key <shortcut>      type a shortcut into the app in front, e.g. cmd+t
 #   exec <command>      run a shell command
-#
+
+
+# -----------------------------------------------------------------------------------------------------------
+
 # Settings
 #   set tab <shortcut>        next-tab shortcut for apps without "; tab"
-#   set tap-ms <50-1000>      how quickly caps lock must be released for a tap
+#   set tap-ms <50-1000>      how quickly caps lock or a tapped modifier must be
+#                             released to count as a tap
 #   set app-window-mod <mods> Hyper + these + an app's key = next window of
 #                             that line's apps, fallbacks included, in config
 #                             order ("none" turns it off)
-#
-# Unbound Hyper combos and taps do nothing.
 
 set tab ctrl+tab
 set tap-ms 300
 set app-window-mod cmd
 
-# taps: alone = back, with a modifier = step through spaces / tabs / windows
+# -----------------------------------------------------------------------------------------------------------
+
+# taps
+# templates:
+#   [<hold key> + ...] hyper : <action>    hold the keys (optional), tap caps lock
+#   <modifier> : <action>                  tap one modifier on its own
+# repeated taps repeat the action
+
 hyper : space back
+shift : tab next
+
 cmd + hyper : space cycle
 cmd + shift + hyper : space cycle prev
 opt + hyper : tab next
@@ -55,7 +68,14 @@ opt + shift + hyper : tab prev
 ctrl + hyper : window next
 ctrl + shift + hyper : window prev
 
-# apps: grid on the left hand, most used on the home row
+
+# -----------------------------------------------------------------------------------------------------------
+
+# app shortcuts
+# template: hyper - <app key> : app <app name> | <optional fallback app 1> | <optional fallback app 2> | ...
+# jump to the space of the first listed app that has an open window; nothing
+# happens if none has one. Pressing the key again = next tab ("; tab <shortcut>")
+
 hyper - w : app awork | absence.io | Things3
 hyper - e : app Slack
 hyper - r : app Calendar
@@ -67,7 +87,12 @@ hyper - f : app Claude | ChatGPT
 hyper - g : app Ghostty | Terminal
 
 hyper - y : app Finder
-hyper - x : app Mail
+hyper - x : app Mail | Gmail
+hyper - c : app Bitwarden | Proton Pass
+
+# -----------------------------------------------------------------------------------------------------------
 
 # open new tab
 hyper - tab : key cmd+t
+
+# -----------------------------------------------------------------------------------------------------------
