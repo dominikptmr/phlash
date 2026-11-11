@@ -353,15 +353,21 @@ static void cycle_windows(struct ordered *list, size_t n, pid_t front_pid, const
     }
     qsort(list, n, sizeof list[0], compare_ordered);
 
-    // Step from the focused window. Without a known focused window, the first
-    // one on the active space counts as current.
-    uint32_t current = focused_window_id(front_pid);
+    // The current window is the front app's window on the active space. Its
+    // "focused window" can lag right after a jump (still the one it had before),
+    // which would skip a window; it only decides between several of its windows
+    // on one space (the desktop).
     uint64_t active = spaces_active();
+    uint32_t focused = focused_window_id(front_pid);
     size_t at = n;
-    for (size_t i = 0; i < n && at == n; i++) {
-        if (current ? list[i].w->id == current : list[i].w->space == active) at = i;
+    for (size_t i = 0; i < n; i++) {
+        const struct window *w = list[i].w;
+        if (w->pid != front_pid || w->space != active) continue;
+        if (at == n || w->id == focused) at = i;
     }
-    if (at == n) at = 0;
+    uint32_t current = at < n ? list[at].w->id : 0;
+    // None of the front app's windows here: start from the first (or last).
+    if (at == n) at = reverse ? 0 : n - 1;
     struct window next = *list[(reverse ? at + n - 1 : at + 1) % n].w;
 
     debugf("app: %s window %u -> %u on space %llu", label, current, next.id,
