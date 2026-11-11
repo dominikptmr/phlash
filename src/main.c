@@ -110,7 +110,9 @@ static void print_combo(const struct combo *c) {
 }
 
 static void print_binding(const struct binding *b) {
-    if (b->tap) {
+    if (b->tap_modifier) {
+        printf("%s : ", keys_tap_modifier_name(b->tap_keycodes));
+    } else if (b->tap) {
         if (print_mods(b->mods, " + ")) printf(" + ");
         printf("hyper : ");
     } else {
@@ -215,6 +217,18 @@ static void on_tap(CGEventFlags mods, void *ctx) {
     });
 }
 
+static void on_modifier_tap(uint16_t keycode, void *ctx) {
+    (void)ctx;
+    const struct config *c = config;
+    const struct binding *b = config_find_modifier_tap(c, keycode);
+    debugf("hotkey: modifier 0x%02x tapped -> %s", keycode, b ? "bound" : "no binding");
+    if (!b) return;
+    dispatch_async(work, ^{
+        if (debug) print_binding(b);
+        action_run(c, b);
+    });
+}
+
 // Space changes made outside phlash (trackpad, Mission Control, clicking an
 // app) aren't announced to us, so look at the active space a few times a second.
 // One cheap window server query; the leeway lets macOS batch the wakeups.
@@ -311,7 +325,7 @@ int main(int argc, char *argv[]) {
     work = dispatch_queue_create("phlash.work", DISPATCH_QUEUE_SERIAL);
     tap_set_debug(debug);
     tap_set_tap_ms(config->tap_ms);
-    if (!tap_start(on_hotkey, on_tap, on_release, on_mods, NULL)) {
+    if (!tap_start(on_hotkey, on_tap, on_release, on_mods, on_modifier_tap, NULL)) {
         fprintf(stderr, "phlash: cannot create event tap\n");
         return 1;
     }

@@ -27,6 +27,7 @@ void action_run(const struct config *config, const struct binding *b) {
         // go; with Hyper + key, until Hyper is. Shift only picks the direction.
         CGEventFlags until = b->tap ? b->mods & TAP_MOD_MASK & ~kCGEventFlagMaskShift : 0;
         apps_cycle_tab(config, b->reverse, until);
+        if (b->tap_modifier) apps_release_held();
         break;
     }
     case ACTION_WINDOW:

@@ -18,9 +18,12 @@
 //
 //   hyper [+ mod ...] - key : action      Hyper + key
 //   [mod + ...] hyper [+ mod ...] : action  Hyper tapped with the mods held
+//   <modifier> : action                    a modifier tapped on its own
 //   set <setting> <value>
 //
 //   mod     cmd | opt | ctrl | shift
+//   modifier cmd | opt | ctrl | shift (either side), lcmd | rcmd | lopt | ropt
+//           | lctrl | rctrl | lshift | rshift (one side), fn
 //   key     what the key types in the current layout ("y", "ö"), a name from
 //           keys.c ("left", "f5") or a hex keycode ("0x29")
 //   action  space back | space cycle [prev] | desktop
@@ -150,6 +153,11 @@ static const char *parse_key_trigger(char *s, struct binding *b) {
 static const char *parse_tap_trigger(char *s, struct binding *b) {
     b->tap = true;
     b->mods = 0;
+    if (!strchr(s, '+') && strcmp(s, "hyper") != 0) {
+        if (!keys_tap_modifier(s, b->tap_keycodes)) return "unknown key to tap";
+        b->tap_modifier = true;
+        return NULL;
+    }
     int hypers = 0;
     for (char *word = strtok(s, "+"); word; word = strtok(NULL, "+")) {
         word = trim(word);
@@ -298,6 +306,16 @@ static const char *parse_setting(char *s, struct config *config) {
 }
 
 static bool already_bound(const struct config *config, const struct binding *b) {
+    if (b->tap_modifier) {
+        for (size_t i = 0; i < config->count; i++) {
+            const struct binding *other = &config->bindings[i];
+            if (other->tap_modifier && other->tap_keycodes[0] == b->tap_keycodes[0] &&
+                other->tap_keycodes[1] == b->tap_keycodes[1]) {
+                return true;
+            }
+        }
+        return false;
+    }
     return b->tap ? config_find_tap(config, b->mods) != NULL
                   : config_find(config, b->keycode, b->mods) != NULL;
 }
@@ -381,9 +399,21 @@ const struct binding *config_find(const struct config *config, uint16_t keycode,
 const struct binding *config_find_tap(const struct config *config, CGEventFlags mods) {
     for (size_t i = 0; i < config->count; i++) {
         const struct binding *b = &config->bindings[i];
-        if (b->tap && b->mods == (mods & TAP_MOD_MASK)) return b;
+        if (b->tap && !b->tap_modifier && b->mods == (mods & TAP_MOD_MASK)) return b;
     }
     return NULL;
+}
+
+const struct binding *config_find_modifier_tap(const struct config *config, uint16_t keycode) {
+    const struct binding *either_side = NULL;
+    for (size_t i = 0; i < config->count; i++) {
+        const struct binding *b = &config->bindings[i];
+        if (!b->tap_modifier) continue;
+        bool first = b->tap_keycodes[0] == keycode, second = b->tap_keycodes[1] == keycode;
+        if (first && second) return b;
+        if ((first || second) && !either_side) either_side = b;
+    }
+    return either_side;
 }
 
 const struct combo *config_app_tab(const struct config *config, const struct binding *b) {

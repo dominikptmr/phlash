@@ -29,6 +29,8 @@ enum tab_mode { TAB_DEFAULT, TAB_CUSTOM, TAB_NONE };
 
 struct binding {
     bool tap;           // Hyper tapped with `mods` held, instead of Hyper + keycode
+    bool tap_modifier;
+    uint16_t tap_keycodes[2];
     uint16_t keycode;
     CGEventFlags mods;  // modifiers with Hyper (TAP_MOD_MASK bits)
     enum action_type action;
@@ -65,6 +67,8 @@ const struct binding *config_find(const struct config *config, uint16_t keycode,
 
 // The binding for tapping Hyper with mods held, or NULL.
 const struct binding *config_find_tap(const struct config *config, CGEventFlags mods);
+
+const struct binding *config_find_modifier_tap(const struct config *config, uint16_t keycode);
 
 // The next-tab shortcut of an app binding, or NULL for "; tab none".
 const struct combo *config_app_tab(const struct config *config, const struct binding *b);

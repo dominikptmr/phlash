@@ -21,4 +21,7 @@ const char *keys_name(uint16_t keycode);
 // Virtual keycode for a config-style name (case-insensitive), or -1 if unknown.
 int keys_code(const char *name);
 
+bool keys_tap_modifier(const char *name, uint16_t keycodes[2]);
+const char *keys_tap_modifier_name(const uint16_t keycodes[2]);
+
 #endif

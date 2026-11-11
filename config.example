@@ -4,9 +4,13 @@
 #
 #   hyper [+ mod ...] - key : action       hold caps lock (Hyper), press key
 #   [mod + ...] hyper : action             tap caps lock while holding mods
+#   <modifier> : action                    tap a modifier on its own (the
+#                                          modifier still reaches the app)
 #   set <setting> <value>
 #
-#   mod     cmd | opt | ctrl | shift
+#   mod      cmd | opt | ctrl | shift
+#   modifier cmd | opt | ctrl | shift (either side), lcmd | rcmd | lopt | ropt
+#            | lctrl | rctrl | lshift | rshift (one side), fn
 #   key     what the key types in your keyboard layout, lowercase (y, ö, #, 1),
 #           a name (return, tab, space, delete, escape, left, f5, ...)
 #           or a hex keycode like 0x0a

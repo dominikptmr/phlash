@@ -110,3 +110,36 @@ bool keys_load_layout(void) {
     CFRelease(source);
     return true;
 }
+
+static const struct {
+    const char *name;
+    uint16_t keycodes[2];
+} tap_modifiers[] = {
+    {"cmd", {0x37, 0x36}},   {"lcmd", {0x37, 0x37}},   {"rcmd", {0x36, 0x36}},
+    {"opt", {0x3A, 0x3D}},   {"lopt", {0x3A, 0x3A}},   {"ropt", {0x3D, 0x3D}},
+    {"alt", {0x3A, 0x3D}},   {"lalt", {0x3A, 0x3A}},   {"ralt", {0x3D, 0x3D}},
+    {"ctrl", {0x3B, 0x3E}},  {"lctrl", {0x3B, 0x3B}},  {"rctrl", {0x3E, 0x3E}},
+    {"shift", {0x38, 0x3C}}, {"lshift", {0x38, 0x38}}, {"rshift", {0x3C, 0x3C}},
+    {"fn", {0x3F, 0x3F}},
+};
+#define TAP_MODIFIER_COUNT (sizeof tap_modifiers / sizeof tap_modifiers[0])
+
+bool keys_tap_modifier(const char *name, uint16_t keycodes[2]) {
+    for (size_t i = 0; i < TAP_MODIFIER_COUNT; i++) {
+        if (strcasecmp(tap_modifiers[i].name, name) != 0) continue;
+        keycodes[0] = tap_modifiers[i].keycodes[0];
+        keycodes[1] = tap_modifiers[i].keycodes[1];
+        return true;
+    }
+    return false;
+}
+
+const char *keys_tap_modifier_name(const uint16_t keycodes[2]) {
+    for (size_t i = 0; i < TAP_MODIFIER_COUNT; i++) {
+        if (tap_modifiers[i].keycodes[0] == keycodes[0] &&
+            tap_modifiers[i].keycodes[1] == keycodes[1]) {
+            return tap_modifiers[i].name;
+        }
+    }
+    return NULL;
+}

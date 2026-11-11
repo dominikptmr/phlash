@@ -33,11 +33,13 @@ typedef void (*tap_release_fn)(void *ctx);
 // mods holds the modifiers now held. Same rules as tap_hotkey_fn.
 typedef void (*tap_mods_fn)(CGEventFlags mods, void *ctx);
 
+typedef void (*tap_modifier_fn)(uint16_t keycode, void *ctx);
+
 // Hyper is F18 held, which caps lock becomes after capslock_remap().
 // Installs the event tap on the current run loop. Needs Accessibility
 // permission.
 bool tap_start(tap_hotkey_fn fn, tap_alone_fn alone, tap_release_fn release, tap_mods_fn mods,
-               void *ctx);
+               tap_modifier_fn modifier, void *ctx);
 void tap_stop(void);
 
 // How quickly Hyper has to be released to count as a tap (default 300 ms).

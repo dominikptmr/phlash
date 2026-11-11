@@ -6,7 +6,8 @@ instantly (no animation) to whichever space an app is on.
 ## Features
 
 phlash turns caps lock into a **Hyper** key: hold it and press another key, or
-tap it alone or with a modifier. You set up what each combination does in
+tap it alone or with a modifier. Modifiers (cmd, opt, ctrl, shift, fn, either
+side or one side) can also be tapped on their own. You set up what each combination does in
 `~/.config/phlash/config` (see [config.example](config.example)).
 
 - **App shortcuts**: jump straight to an app's window on any space, without the
