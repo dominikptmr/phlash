@@ -15,13 +15,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-// syntax in docs/configuration.md
+// syntax in README.md
 
 #define DEFAULT_TAP_MS 300
-
-static const char new_config[] =
-    "# phlash config, syntax: "
-    "https://github.com/dominikptmr/phlash/blob/main/docs/configuration.md\n";
 
 const char *config_default_path(void) {
     static char path[PATH_MAX];
@@ -52,10 +48,8 @@ bool config_create(const char *path) {
         fprintf(stderr, "phlash: cannot create %s: %s\n", path, strerror(errno));
         return false;
     }
-    bool ok = write(fd, new_config, sizeof new_config - 1) == (ssize_t)(sizeof new_config - 1);
     close(fd);
-    if (!ok) fprintf(stderr, "phlash: cannot write %s\n", path);
-    return ok;
+    return true;
 }
 
 static char *trim(char *s) {

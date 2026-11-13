@@ -36,7 +36,7 @@ class Phlash < Formula
       macOS may ask again.
 
       On first start phlash creates an empty ~/.config/phlash/config.
-      Syntax: https://github.com/dominikptmr/phlash/blob/main/docs/configuration.md
+      Syntax: https://github.com/dominikptmr/phlash#configuration
       Reload it after editing:
         pkill -HUP phlash
 
