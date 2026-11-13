@@ -131,14 +131,7 @@ static void print_binding(const struct binding *b) {
         print_combo(&b->key);
         printf("\n");
         break;
-    case ACTION_APP: {
-        printf("app %s ; tab ", b->arg);
-        const struct combo *tab = config_app_tab(config, b);
-        if (tab) print_combo(tab);
-        else printf("none");
-        printf("\n");
-        break;
-    }
+    case ACTION_APP: printf("app %s\n", b->arg); break;
     case ACTION_EXEC: printf("exec %s\n", b->arg); break;
     }
 }
@@ -146,6 +139,12 @@ static void print_binding(const struct binding *b) {
 static void print_settings(const struct config *c) {
     printf("set tab ");
     print_combo(&c->default_tab);
+    for (size_t i = 0; i < c->app_tab_count; i++) {
+        printf("\nset tab ");
+        if (c->app_tabs[i].none) printf("none");
+        else print_combo(&c->app_tabs[i].tab);
+        printf(" for %s", c->app_tabs[i].name);
+    }
     printf("\nset tap-ms %d\nset app-window-mod ", c->tap_ms);
     if (!print_mods(c->app_window_mods, "+")) printf("none");
     printf("\n");
@@ -278,9 +277,8 @@ int main(int argc, char *argv[]) {
 
     setvbuf(stdout, NULL, _IOLBF, 0);
 
-    if (access(config_path, F_OK) != 0 && errno == ENOENT &&
-        config_create_default(config_path)) {
-        printf("phlash: created %s from the example config\n", config_path);
+    if (access(config_path, F_OK) != 0 && errno == ENOENT && config_create(config_path)) {
+        printf("phlash: created empty %s\n", config_path);
     }
 
     load_layout();

@@ -5,7 +5,7 @@
 
 #include <stdbool.h>
 
-void apps_focus(const char *spec, const struct combo *next_tab);
+void apps_focus(const struct config *config, const char *spec);
 
 // call before other actions and on exit
 void apps_release_held(void);

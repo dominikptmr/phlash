@@ -22,7 +22,11 @@ struct combo {
     CGEventFlags mods;
 };
 
-enum tab_mode { TAB_DEFAULT, TAB_CUSTOM, TAB_NONE };
+struct app_tab {
+    char *name;
+    bool none;
+    struct combo tab;
+};
 
 struct binding {
     bool tap;
@@ -33,8 +37,6 @@ struct binding {
     enum action_type action;
     bool reverse;
     char *arg;
-    enum tab_mode tab_mode;
-    struct combo tab;
     struct combo key;
 };
 
@@ -42,13 +44,15 @@ struct config {
     struct binding *bindings;
     size_t count;
     struct combo default_tab;
+    struct app_tab *app_tabs;
+    size_t app_tab_count;
     int tap_ms;
     CGEventFlags app_window_mods;
 };
 
 const char *config_default_path(void);
 
-bool config_create_default(const char *path);
+bool config_create(const char *path);
 
 struct config *config_load(const char *path);
 void config_free(struct config *config);
@@ -59,7 +63,5 @@ const struct binding *config_find(const struct config *config, uint16_t keycode,
 const struct binding *config_find_tap(const struct config *config, CGEventFlags mods);
 
 const struct binding *config_find_modifier_tap(const struct config *config, uint16_t keycode);
-
-const struct combo *config_app_tab(const struct config *config, const struct binding *b);
 
 #endif

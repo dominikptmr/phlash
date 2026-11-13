@@ -14,7 +14,6 @@ class Phlash < Formula
     system "cmake", "-S", ".", "-B", "build", "-DPHLASH_SIGN_IDENTITY=-", *std_cmake_args
     system "cmake", "--build", "build"
     bin.install "build/phlash"
-    pkgshare.install "config.example"
   end
 
   service do
@@ -36,8 +35,9 @@ class Phlash < Formula
       starts working as soon as it's granted. After `brew upgrade phlash`,
       macOS may ask again.
 
-      On first start phlash creates ~/.config/phlash/config from the example
-      (#{opt_pkgshare}/config.example). Reload it after editing:
+      On first start phlash creates an empty ~/.config/phlash/config.
+      Syntax: https://github.com/dominikptmr/phlash/blob/main/docs/configuration.md
+      Reload it after editing:
         pkill -HUP phlash
 
       Before starting, quit other caps lock remappers (Hyperkey, Karabiner

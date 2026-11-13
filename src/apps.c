@@ -82,19 +82,21 @@ static pid_t frontmost_pid(void) {
     return pid;
 }
 
-static const char *front_name_for(pid_t pid, char *names[], size_t count, pid_t *pid_out) {
+static const char *front_name(char *names[], size_t count, pid_t *pid_out) {
+    *pid_out = frontmost_pid();
+    if (!*pid_out) return NULL;
     for (size_t i = 0; i < count; i++) {
-        if (pid_matches(pid, names[i])) {
-            *pid_out = pid;
-            return names[i];
-        }
+        if (pid_matches(*pid_out, names[i])) return names[i];
     }
     return NULL;
 }
 
-static const char *front_name(char *names[], size_t count, pid_t *pid_out) {
-    pid_t pid = frontmost_pid();
-    return pid ? front_name_for(pid, names, count, pid_out) : NULL;
+static const struct combo *tab_for(const struct config *config, pid_t pid) {
+    for (size_t i = 0; i < config->app_tab_count; i++) {
+        const struct app_tab *t = &config->app_tabs[i];
+        if (pid_matches(pid, t->name)) return t->none ? NULL : &t->tab;
+    }
+    return &config->default_tab;
 }
 
 static bool activate(pid_t pid) {
@@ -194,45 +196,18 @@ void apps_cycle_tab(const struct config *config, bool reverse, CGEventFlags unti
     refresh_windows();
     pid_t pid = frontmost_pid();
     if (!pid) return;
-
-    const struct combo *tab = &config->default_tab;
-    for (size_t i = 0; i < config->count; i++) {
-        const struct binding *b = &config->bindings[i];
-        if (b->action != ACTION_APP) continue;
-        char buf[512];
-        char *names[MAX_NAMES];
-        size_t count = split_names(b->arg, buf, sizeof buf, names);
-        pid_t matched;
-        if (!front_name_for(pid, names, count, &matched)) continue;
-        tab = config_app_tab(config, b);
-        if (!tab) {
-            debugf("app: tab cycling is off for %s", b->arg);
-            return;
-        }
-        break;
+    const struct combo *tab = tab_for(config, pid);
+    if (!tab) {
+        debugf("app: tab cycling is off for pid %d", pid);
+        return;
     }
     struct combo combo = reverse ? reversed(tab) : *tab;
     debugf("app: %s tab in pid %d", reverse ? "previous" : "next", pid);
     send_tab(&combo, until);
 }
 
-void apps_focus(const char *spec, const struct combo *next_tab) {
-    char buf[512];
-    char *names[MAX_NAMES];
-    size_t count = split_names(spec, buf, sizeof buf, names);
-    refresh_windows();
-
-    pid_t pid;
-    const char *front = front_name(names, count, &pid);
-    if (front) {
-        if (next_tab) {
-            debugf("app: %s is in front, next tab", front);
-            send_tab(next_tab, 0);
-        }
-        return;
-    }
+static void focus_first(char *names[], size_t count, const char *spec) {
     apps_release_held();
-
     for (size_t i = 0; i < count; i++) {
         const struct window *found = find_window(names[i]);
         if (!found) continue;
@@ -244,6 +219,25 @@ void apps_focus(const char *spec, const struct combo *next_tab) {
         return;
     }
     debugf("app: no window of %s on any space, doing nothing", spec);
+}
+
+void apps_focus(const struct config *config, const char *spec) {
+    char buf[512];
+    char *names[MAX_NAMES];
+    size_t count = split_names(spec, buf, sizeof buf, names);
+    refresh_windows();
+
+    pid_t pid;
+    const char *front = front_name(names, count, &pid);
+    if (!front) {
+        focus_first(names, count, spec);
+        return;
+    }
+    const struct combo *tab = tab_for(config, pid);
+    if (tab) {
+        debugf("app: %s is in front, next tab", front);
+        send_tab(tab, 0);
+    }
 }
 
 struct ordered {
@@ -345,7 +339,7 @@ void apps_next_window(const char *spec) {
     pid_t pid;
     const char *front = front_name(names, count, &pid);
     if (!front) {
-        apps_focus(spec, NULL);
+        focus_first(names, count, spec);
         return;
     }
 

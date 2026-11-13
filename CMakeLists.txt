@@ -19,15 +19,7 @@ target_link_libraries(iss PUBLIC
         "-framework CoreGraphics"
         "-framework ApplicationServices")
 
-add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/default_config.c
-        COMMAND xxd -i -n default_config config.example ${CMAKE_CURRENT_BINARY_DIR}/default_config.c
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        DEPENDS config.example
-        VERBATIM)
-
 add_executable(phlash
-        ${CMAKE_CURRENT_BINARY_DIR}/default_config.c
         src/main.c
         src/tap.c
         src/keys.c
