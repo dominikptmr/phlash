@@ -43,19 +43,8 @@ static void on_hyper(CGEventRef event, bool down) {
     release_fn(hotkey_ctx);
 }
 
-static CGEventFlags modifier_flag(uint16_t keycode) {
-    switch (keycode) {
-    case 0x36: case 0x37: return kCGEventFlagMaskCommand;
-    case 0x3A: case 0x3D: return kCGEventFlagMaskAlternate;
-    case 0x3B: case 0x3E: return kCGEventFlagMaskControl;
-    case 0x38: case 0x3C: return kCGEventFlagMaskShift;
-    case 0x3F: return kCGEventFlagMaskSecondaryFn;
-    default: return 0;
-    }
-}
-
 static void on_modifier(uint16_t keycode, CGEventFlags flags) {
-    CGEventFlags flag = modifier_flag(keycode);
+    CGEventFlags flag = keys_modifier_flag(keycode);
     flags &= TAP_MOD_MASK | kCGEventFlagMaskSecondaryFn;
     uint64_t now = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
     if (flag && (flags & flag)) {

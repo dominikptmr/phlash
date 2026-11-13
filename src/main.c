@@ -84,14 +84,11 @@ static void print_key(uint16_t keycode) {
 }
 
 static bool print_mods(CGEventFlags mods, const char *separator) {
-    static const struct { CGEventFlags flag; const char *name; } names[] = {
-        {kCGEventFlagMaskCommand, "cmd"}, {kCGEventFlagMaskAlternate, "opt"},
-        {kCGEventFlagMaskControl, "ctrl"}, {kCGEventFlagMaskShift, "shift"},
-    };
     bool any = false;
-    for (size_t i = 0; i < sizeof names / sizeof names[0]; i++) {
-        if (!(mods & names[i].flag)) continue;
-        printf("%s%s", any ? separator : "", names[i].name);
+    for (size_t i = 0; i < keys_modifier_count; i++) {
+        const struct modifier *m = &keys_modifiers[i];
+        if (!(mods & m->flag & TAP_MOD_MASK)) continue;
+        printf("%s%s", any ? separator : "", m->name);
         any = true;
     }
     return any;
@@ -131,7 +128,11 @@ static void print_binding(const struct binding *b) {
         print_combo(&b->key);
         printf("\n");
         break;
-    case ACTION_APP: printf("app %s\n", b->arg); break;
+    case ACTION_APP:
+        printf("app ");
+        for (size_t i = 0; i < b->app_count; i++) printf("%s%s", i ? " | " : "", b->apps[i]);
+        printf("\n");
+        break;
     case ACTION_EXEC: printf("exec %s\n", b->arg); break;
     }
 }
@@ -150,6 +151,13 @@ static void print_settings(const struct config *c) {
     printf("\n");
 }
 
+static void run(const struct config *c, const struct binding *b) {
+    dispatch_async(work, ^{
+        if (log_debug) print_binding(b);
+        action_run(c, b);
+    });
+}
+
 static void on_hotkey(uint16_t keycode, CGEventFlags mods, void *ctx) {
     (void)ctx;
     // a reload frees the old config after queued work
@@ -165,14 +173,8 @@ static void on_hotkey(uint16_t keycode, CGEventFlags mods, void *ctx) {
 
     debugf("hotkey: key 0x%02x mods 0x%08llx -> %s", keycode, (unsigned long long)mods,
            b ? "bound" : app ? "next window" : "no binding");
-    if (b) {
-        dispatch_async(work, ^{
-            if (log_debug) print_binding(b);
-            action_run(c, b);
-        });
-    } else if (app) {
-        dispatch_async(work, ^{ apps_next_window(app->arg); });
-    }
+    if (b) run(c, b);
+    else if (app) dispatch_async(work, ^{ apps_next_window(app); });
 }
 
 static void load_layout(void) {
@@ -197,11 +199,7 @@ static void on_tap(CGEventFlags mods, void *ctx) {
     const struct binding *b = config_find_tap(c, mods);
     debugf("hotkey: hyper tapped, mods 0x%08llx -> %s", (unsigned long long)mods,
            b ? "bound" : "no binding");
-    if (!b) return;
-    dispatch_async(work, ^{
-        if (log_debug) print_binding(b);
-        action_run(c, b);
-    });
+    if (b) run(c, b);
 }
 
 static void on_modifier_tap(uint16_t keycode, void *ctx) {
@@ -209,11 +207,7 @@ static void on_modifier_tap(uint16_t keycode, void *ctx) {
     const struct config *c = config;
     const struct binding *b = config_find_modifier_tap(c, keycode);
     debugf("hotkey: modifier 0x%02x tapped -> %s", keycode, b ? "bound" : "no binding");
-    if (!b) return;
-    dispatch_async(work, ^{
-        if (log_debug) print_binding(b);
-        action_run(c, b);
-    });
+    if (b) run(c, b);
 }
 
 // outside space changes aren't announced so poll

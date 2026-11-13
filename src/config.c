@@ -77,12 +77,13 @@ static int parse_key(const char *s) {
 }
 
 static bool parse_mod(const char *s, CGEventFlags *mods) {
-    if (strcmp(s, "cmd") == 0) *mods |= kCGEventFlagMaskCommand;
-    else if (strcmp(s, "opt") == 0) *mods |= kCGEventFlagMaskAlternate;
-    else if (strcmp(s, "ctrl") == 0) *mods |= kCGEventFlagMaskControl;
-    else if (strcmp(s, "shift") == 0) *mods |= kCGEventFlagMaskShift;
-    else return false;
-    return true;
+    for (size_t i = 0; i < keys_modifier_count; i++) {
+        const struct modifier *m = &keys_modifiers[i];
+        if (!(m->flag & TAP_MOD_MASK) || strcmp(s, m->name) != 0) continue;
+        *mods |= m->flag;
+        return true;
+    }
+    return false;
 }
 
 static const char *parse_key_trigger(char *s, struct binding *b) {
@@ -190,6 +191,24 @@ static const char *parse_tab(char *value, struct config *config) {
     return NULL;
 }
 
+static const char *parse_apps(char *names, struct binding *b) {
+    for (char *name = strsep(&names, "|"); name; name = strsep(&names, "|")) {
+        name = trim(name);
+        if (*name == '\0') return "app needs a name";
+        b->apps = realloc(b->apps, (b->app_count + 1) * sizeof *b->apps);
+        b->apps[b->app_count] = strdup(name);
+        if (!b->apps[b->app_count]) return strerror(errno);
+        b->app_count++;
+    }
+    return NULL;
+}
+
+static void binding_free(struct binding *b) {
+    free(b->arg);
+    for (size_t i = 0; i < b->app_count; i++) free(b->apps[i]);
+    free(b->apps);
+}
+
 static const char *parse_direction(const char *arg, struct binding *b, const char *usage) {
     if (strcmp(arg, "next") == 0) b->reverse = false;
     else if (strcmp(arg, "prev") == 0) b->reverse = true;
@@ -228,10 +247,8 @@ static const char *parse_action(char *s, struct binding *b) {
         return parse_direction(arg, b, "window needs next or prev");
     }
     if (strcmp(verb, "app") == 0) {
-        if (*arg == '\0') return "app needs a name";
         b->action = ACTION_APP;
-        b->arg = strdup(arg);
-        return b->arg ? NULL : strerror(errno);
+        return parse_apps(arg, b);
     }
     if (strcmp(verb, "key") == 0) {
         if (*arg == '\0') return "key needs a shortcut, like cmd+t";
@@ -326,7 +343,7 @@ struct config *config_load(const char *path) {
 
         if (err) {
             fprintf(stderr, "phlash: %s:%d: %s\n", path, lineno, err);
-            free(b.arg);
+            binding_free(&b);
             errors++;
             continue;
         }
@@ -350,7 +367,7 @@ struct config *config_load(const char *path) {
 
 void config_free(struct config *config) {
     if (!config) return;
-    for (size_t i = 0; i < config->count; i++) free(config->bindings[i].arg);
+    for (size_t i = 0; i < config->count; i++) binding_free(&config->bindings[i]);
     free(config->bindings);
     for (size_t i = 0; i < config->app_tab_count; i++) free(config->app_tabs[i].name);
     free(config->app_tabs);

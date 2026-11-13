@@ -37,6 +37,8 @@ struct binding {
     enum action_type action;
     bool reverse;
     char *arg;
+    char **apps;
+    size_t app_count;
     struct combo key;
 };
 

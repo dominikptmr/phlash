@@ -20,7 +20,7 @@ void action_run(const struct config *config, const struct binding *b) {
         switch_desktop();
         break;
     case ACTION_APP:
-        apps_focus(config, b->arg);
+        apps_focus(config, b);
         break;
     case ACTION_TAB: {
         // shift only sets direction

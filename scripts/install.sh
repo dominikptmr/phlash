@@ -11,14 +11,8 @@ LOG="$HOME/Library/Logs/phlash.log"
 BUILD=build/release
 DOMAIN="gui/$(id -u)"
 
-CMAKE=""
-for c in "$(command -v cmake || true)" \
-         "$HOME"/Applications/CLion.app/Contents/bin/cmake/mac/*/bin/cmake \
-         /Applications/CLion.app/Contents/bin/cmake/mac/*/bin/cmake; do
-    if [[ -x "$c" ]]; then CMAKE="$c"; break; fi
-done
-if [[ -z "$CMAKE" ]]; then
-    echo "install: cmake not found (install it with Homebrew, or CLion)" >&2
+if ! command -v cmake >/dev/null; then
+    echo "install: cmake not found (brew install cmake)" >&2
     exit 1
 fi
 
@@ -51,8 +45,8 @@ else
          "(you'll have to re-grant Accessibility after every install)" >&2
 fi
 
-"$CMAKE" -S . -B "$BUILD" -DCMAKE_BUILD_TYPE=Release -DPHLASH_SIGN_IDENTITY="$IDENTITY" >/dev/null
-"$CMAKE" --build "$BUILD"
+cmake -S . -B "$BUILD" -DCMAKE_BUILD_TYPE=Release -DPHLASH_SIGN_IDENTITY="$IDENTITY" >/dev/null
+cmake --build "$BUILD"
 "$BUILD/phlash" --check >/dev/null  # creates the config on first install
 
 launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true

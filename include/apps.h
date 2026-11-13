@@ -5,7 +5,7 @@
 
 #include <stdbool.h>
 
-void apps_focus(const struct config *config, const char *spec);
+void apps_focus(const struct config *config, const struct binding *b);
 
 // call before other actions and on exit
 void apps_release_held(void);
@@ -21,6 +21,6 @@ void apps_send_key(const struct combo *c);
 
 void apps_cycle_window(bool reverse);
 
-void apps_next_window(const char *spec);
+void apps_next_window(const struct binding *b);
 
 #endif

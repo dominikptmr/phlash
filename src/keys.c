@@ -1,7 +1,9 @@
 #include "keys.h"
 
 #include <Carbon/Carbon.h>
+#include <ctype.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 #include <strings.h>
 
@@ -103,34 +105,50 @@ bool keys_load_layout(void) {
     return true;
 }
 
-static const struct {
-    const char *name;
-    uint16_t keycodes[2];
-} tap_modifiers[] = {
-    {"cmd", {0x37, 0x36}},   {"lcmd", {0x37, 0x37}},   {"rcmd", {0x36, 0x36}},
-    {"opt", {0x3A, 0x3D}},   {"lopt", {0x3A, 0x3A}},   {"ropt", {0x3D, 0x3D}},
-    {"ctrl", {0x3B, 0x3E}},  {"lctrl", {0x3B, 0x3B}},  {"rctrl", {0x3E, 0x3E}},
-    {"shift", {0x38, 0x3C}}, {"lshift", {0x38, 0x38}}, {"rshift", {0x3C, 0x3C}},
-    {"fn", {0x3F, 0x3F}},
+const struct modifier keys_modifiers[] = {
+    {"cmd", kCGEventFlagMaskCommand, 0x37, 0x36},
+    {"opt", kCGEventFlagMaskAlternate, 0x3A, 0x3D},
+    {"ctrl", kCGEventFlagMaskControl, 0x3B, 0x3E},
+    {"shift", kCGEventFlagMaskShift, 0x38, 0x3C},
+    {"fn", kCGEventFlagMaskSecondaryFn, 0x3F, 0x3F},
 };
-#define TAP_MODIFIER_COUNT (sizeof tap_modifiers / sizeof tap_modifiers[0])
+const size_t keys_modifier_count = sizeof keys_modifiers / sizeof keys_modifiers[0];
 
+CGEventFlags keys_modifier_flag(uint16_t keycode) {
+    for (size_t i = 0; i < keys_modifier_count; i++) {
+        const struct modifier *m = &keys_modifiers[i];
+        if (keycode == m->left || keycode == m->right) return m->flag;
+    }
+    return 0;
+}
+
+// "cmd" = either side, "lcmd" / "rcmd" = one side
 bool keys_tap_modifier(const char *name, uint16_t keycodes[2]) {
-    for (size_t i = 0; i < TAP_MODIFIER_COUNT; i++) {
-        if (strcasecmp(tap_modifiers[i].name, name) != 0) continue;
-        keycodes[0] = tap_modifiers[i].keycodes[0];
-        keycodes[1] = tap_modifiers[i].keycodes[1];
+    for (size_t i = 0; i < keys_modifier_count; i++) {
+        const struct modifier *m = &keys_modifiers[i];
+        if (strcasecmp(name, m->name) == 0) {
+            keycodes[0] = m->left;
+            keycodes[1] = m->right;
+            return true;
+        }
+        if (!name[0] || m->left == m->right || strcasecmp(name + 1, m->name) != 0) continue;
+        char side = (char)tolower((unsigned char)name[0]);
+        if (side != 'l' && side != 'r') continue;
+        keycodes[0] = keycodes[1] = side == 'l' ? m->left : m->right;
         return true;
     }
     return false;
 }
 
 const char *keys_tap_modifier_name(const uint16_t keycodes[2]) {
-    for (size_t i = 0; i < TAP_MODIFIER_COUNT; i++) {
-        if (tap_modifiers[i].keycodes[0] == keycodes[0] &&
-            tap_modifiers[i].keycodes[1] == keycodes[1]) {
-            return tap_modifiers[i].name;
-        }
+    static char name[8];
+    for (size_t i = 0; i < keys_modifier_count; i++) {
+        const struct modifier *m = &keys_modifiers[i];
+        if (keycodes[0] == m->left && keycodes[1] == m->right) return m->name;
+        if (keycodes[0] != keycodes[1]) continue;
+        if (keycodes[0] != m->left && keycodes[0] != m->right) continue;
+        snprintf(name, sizeof name, "%c%s", keycodes[0] == m->left ? 'l' : 'r', m->name);
+        return name;
     }
     return NULL;
 }

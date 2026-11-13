@@ -1,6 +1,7 @@
 #include "apps.h"
 
 #include "cgs_private.h"
+#include "keys.h"
 #include "log.h"
 #include "spaces.h"
 #include "switch.h"
@@ -13,8 +14,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-
-#define MAX_NAMES 16
 
 // work queue only so static keeps 80 KB off its stack
 static struct window windows[WINDOWS_MAX];
@@ -56,19 +55,6 @@ static const struct window *find_window(const char *name) {
     return found;
 }
 
-static size_t split_names(const char *spec, char *buf, size_t size, char *names[MAX_NAMES]) {
-    strlcpy(buf, spec, size);
-    size_t count = 0;
-    for (char *rest = buf, *name; count < MAX_NAMES && (name = strsep(&rest, "|"));) {
-        while (*name == ' ' || *name == '\t') name++;
-        char *end = name + strlen(name);
-        while (end > name && (end[-1] == ' ' || end[-1] == '\t')) end--;
-        *end = '\0';
-        if (*name) names[count++] = name;
-    }
-    return count;
-}
-
 static pid_t frontmost_pid(void) {
     AXUIElementRef system = AXUIElementCreateSystemWide();
     CFTypeRef app = NULL;
@@ -82,7 +68,7 @@ static pid_t frontmost_pid(void) {
     return pid;
 }
 
-static const char *front_name(char *names[], size_t count, pid_t *pid_out) {
+static const char *front_name(char *const names[], size_t count, pid_t *pid_out) {
     *pid_out = frontmost_pid();
     if (!*pid_out) return NULL;
     for (size_t i = 0; i < count; i++) {
@@ -121,17 +107,6 @@ static void switch_to_space_of(uint64_t space) {
 static CGEventFlags held_mods;
 static CGEventFlags hold_until;
 
-static const struct {
-    CGEventFlags flag;
-    uint16_t keycode;
-} modifier_keys[] = {
-    {kCGEventFlagMaskControl, 0x3B},
-    {kCGEventFlagMaskAlternate, 0x3A},
-    {kCGEventFlagMaskShift, 0x38},
-    {kCGEventFlagMaskCommand, 0x37},
-};
-#define MODIFIER_KEY_COUNT (sizeof modifier_keys / sizeof modifier_keys[0])
-
 static void post_key(uint16_t keycode, bool down, CGEventFlags flags, bool modifier) {
     CGEventRef e = CGEventCreateKeyboardEvent(NULL, keycode, down);
     if (!e) return;
@@ -148,10 +123,11 @@ void apps_send_key(const struct combo *c) {
 }
 
 void apps_release_held(void) {
-    for (size_t i = MODIFIER_KEY_COUNT; i-- > 0;) {
-        if (!(held_mods & modifier_keys[i].flag)) continue;
-        held_mods &= ~modifier_keys[i].flag;
-        post_key(modifier_keys[i].keycode, false, held_mods, true);
+    for (size_t i = keys_modifier_count; i-- > 0;) {
+        const struct modifier *m = &keys_modifiers[i];
+        if (!(held_mods & m->flag)) continue;
+        held_mods &= ~m->flag;
+        post_key(m->left, false, held_mods, true);
     }
     hold_until = 0;
 }
@@ -168,10 +144,11 @@ void apps_mods_changed(CGEventFlags mods) {
 static void send_tab(const struct combo *c, CGEventFlags until) {
     CGEventFlags hold = c->mods & ~kCGEventFlagMaskShift;
     if (held_mods != hold) apps_release_held();
-    for (size_t i = 0; i < MODIFIER_KEY_COUNT; i++) {
-        if (!(hold & modifier_keys[i].flag) || (held_mods & modifier_keys[i].flag)) continue;
-        held_mods |= modifier_keys[i].flag;
-        post_key(modifier_keys[i].keycode, true, held_mods, true);
+    for (size_t i = 0; i < keys_modifier_count; i++) {
+        const struct modifier *m = &keys_modifiers[i];
+        if (!(hold & m->flag) || (held_mods & m->flag)) continue;
+        held_mods |= m->flag;
+        post_key(m->left, true, held_mods, true);
     }
     hold_until = until;
     CGEventFlags flags = held_mods | (c->mods & kCGEventFlagMaskShift);
@@ -206,7 +183,7 @@ void apps_cycle_tab(const struct config *config, bool reverse, CGEventFlags unti
     send_tab(&combo, until);
 }
 
-static void focus_first(char *names[], size_t count, const char *spec) {
+static void focus_first(char *const names[], size_t count) {
     apps_release_held();
     for (size_t i = 0; i < count; i++) {
         const struct window *found = find_window(names[i]);
@@ -218,19 +195,15 @@ static void focus_first(char *names[], size_t count, const char *spec) {
         if (!activate(w.pid)) fprintf(stderr, "phlash: cannot activate %s\n", names[i]);
         return;
     }
-    debugf("app: no window of %s on any space, doing nothing", spec);
+    debugf("app: no window of %s or its fallbacks, doing nothing", names[0]);
 }
 
-void apps_focus(const struct config *config, const char *spec) {
-    char buf[512];
-    char *names[MAX_NAMES];
-    size_t count = split_names(spec, buf, sizeof buf, names);
+void apps_focus(const struct config *config, const struct binding *b) {
     refresh_windows();
-
     pid_t pid;
-    const char *front = front_name(names, count, &pid);
+    const char *front = front_name(b->apps, b->app_count, &pid);
     if (!front) {
-        focus_first(names, count, spec);
+        focus_first(b->apps, b->app_count);
         return;
     }
     const struct combo *tab = tab_for(config, pid);
@@ -329,28 +302,24 @@ static void cycle_windows(struct ordered *list, size_t n, pid_t front_pid, const
     raise_window(next.pid, next.id);
 }
 
-void apps_next_window(const char *spec) {
-    apps_release_held();
-    char buf[512];
-    char *names[MAX_NAMES];
-    size_t count = split_names(spec, buf, sizeof buf, names);
+void apps_next_window(const struct binding *b) {
     refresh_windows();
-
     pid_t pid;
-    const char *front = front_name(names, count, &pid);
+    const char *front = front_name(b->apps, b->app_count, &pid);
     if (!front) {
-        focus_first(names, count, spec);
+        focus_first(b->apps, b->app_count);
         return;
     }
+    apps_release_held();
 
     struct space spaces[SPACES_MAX];
     size_t space_count = spaces_get(spaces);
     struct ordered list[WINDOWS_MAX];
     size_t n = 0;
-    for (size_t i = 0; i < count; i++) {
-        n = add_windows(list, n, 0, names[i], (int)i, spaces, space_count);
+    for (size_t i = 0; i < b->app_count; i++) {
+        n = add_windows(list, n, 0, b->apps[i], (int)i, spaces, space_count);
     }
-    cycle_windows(list, n, pid, spec, false);
+    cycle_windows(list, n, pid, b->apps[0], false);
 }
 
 void apps_cycle_window(bool reverse) {
