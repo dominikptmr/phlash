@@ -175,7 +175,9 @@ hyper - s : app Safari
 hyper - d : app WebStorm | PhpStorm | Visual Studio Code
 ```
 
-- the name is what `phlash --list` shows or the `.app` name, in any case
+- the name is what `phlash --list` shows, the `.app` name or the bundle ID,
+  in any case; bundle IDs are the same in every system language, find one with
+  `osascript -e 'id of app "Calendar"'`
 - with `|`, the first app that has an open window wins
 - prefers a window on the current space, else the frontmost one; minimized
   windows don't count

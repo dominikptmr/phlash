@@ -19,21 +19,58 @@
 static struct window windows[WINDOWS_MAX];
 static size_t window_count;
 
+#define BUNDLES_MAX 64
+
+struct bundle {
+    pid_t pid;
+    char name[128];
+    char id[256];
+};
+
+// filled on demand and cleared with the window list
+static struct bundle bundles[BUNDLES_MAX];
+static size_t bundle_count;
+
 static void refresh_windows(void) {
     window_count = windows_get(windows);
+    bundle_count = 0;
+}
+
+static void read_bundle_id(const char *app_path, char *out, size_t size) {
+    CFURLRef url = CFURLCreateFromFileSystemRepresentation(
+        kCFAllocatorDefault, (const UInt8 *)app_path, (CFIndex)strlen(app_path), true);
+    CFBundleRef bundle = url ? CFBundleCreate(kCFAllocatorDefault, url) : NULL;
+    CFStringRef id = bundle ? CFBundleGetIdentifier(bundle) : NULL;
+    if (!id || !CFStringGetCString(id, out, (CFIndex)size, kCFStringEncodingUTF8)) out[0] = '\0';
+    if (bundle) CFRelease(bundle);
+    if (url) CFRelease(url);
+}
+
+static const struct bundle *bundle_of(pid_t pid) {
+    for (size_t i = 0; i < bundle_count; i++) {
+        if (bundles[i].pid == pid) return &bundles[i];
+    }
+    struct bundle *b = &bundles[bundle_count < BUNDLES_MAX ? bundle_count++ : BUNDLES_MAX - 1];
+    b->pid = pid;
+    b->name[0] = b->id[0] = '\0';
+
+    // ".../Visual Studio Code.app/Contents/MacOS/Electron" -> "Visual Studio Code"
+    char path[PROC_PIDPATHINFO_MAXSIZE];
+    if (proc_pidpath(pid, path, sizeof path) <= 0) return b;
+    char *end = strstr(path, ".app/");
+    if (!end) return b;
+    end[4] = '\0';
+    read_bundle_id(path, b->id, sizeof b->id);
+    *end = '\0';
+    char *slash = strrchr(path, '/');
+    strlcpy(b->name, slash ? slash + 1 : path, sizeof b->name);
+    return b;
 }
 
 static bool name_matches(pid_t pid, const char *owner, const char *name) {
     if (owner && strcasecmp(owner, name) == 0) return true;
-
-    // ".../Visual Studio Code.app/Contents/MacOS/Electron" -> "Visual Studio Code"
-    char path[PROC_PIDPATHINFO_MAXSIZE];
-    if (proc_pidpath(pid, path, sizeof path) <= 0) return false;
-    char *bundle_end = strstr(path, ".app/");
-    if (!bundle_end) return false;
-    *bundle_end = '\0';
-    char *slash = strrchr(path, '/');
-    return strcasecmp(slash ? slash + 1 : path, name) == 0;
+    const struct bundle *b = bundle_of(pid);
+    return strcasecmp(b->name, name) == 0 || strcasecmp(b->id, name) == 0;
 }
 
 static bool pid_matches(pid_t pid, const char *name) {
