@@ -84,18 +84,6 @@ static CGEventRef callback(CGEventTapProxy proxy, CGEventType type, CGEventRef e
     }
 
     uint16_t keycode = (uint16_t)CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
-    if (log_debug) {
-        const char *name = keys_name(keycode);
-        CGEventFlags flags = CGEventGetFlags(event);
-        debugf("tap: %-5s key %-6s (0x%02x) flags 0x%08llx%s%s%s%s  hyper %d",
-               type == kCGEventKeyDown ? "down" : type == kCGEventKeyUp ? "up" : "flags",
-               name ? name : "?", keycode, (unsigned long long)flags,
-               flags & kCGEventFlagMaskCommand ? " cmd" : "",
-               flags & kCGEventFlagMaskAlternate ? " opt" : "",
-               flags & kCGEventFlagMaskControl ? " ctrl" : "",
-               flags & kCGEventFlagMaskShift ? " shift" : "",
-               hyper_down);
-    }
 
     if (type == kCGEventFlagsChanged) {
         on_modifier(keycode, CGEventGetFlags(event));

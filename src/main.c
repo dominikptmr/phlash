@@ -34,7 +34,7 @@ static void usage(FILE *out) {
             "\n"
             "  --check        check the config file and exit\n"
             "  --list         list spaces (* = current) and the apps on them, then exit\n"
-            "  --debug        log every key event and hotkey to stderr/stdout\n"
+            "  --debug        log hotkeys and actions\n"
             "\n"
             "Caps lock becomes Hyper while phlash runs. What Hyper + key and tapping\n"
             "Hyper (alone or with modifiers held) do comes from the config.\n"
