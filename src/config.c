@@ -83,7 +83,7 @@ static int parse_key(const char *s) {
 
 static bool parse_mod(const char *s, CGEventFlags *mods) {
     if (strcmp(s, "cmd") == 0) *mods |= kCGEventFlagMaskCommand;
-    else if (strcmp(s, "opt") == 0 || strcmp(s, "alt") == 0) *mods |= kCGEventFlagMaskAlternate;
+    else if (strcmp(s, "opt") == 0) *mods |= kCGEventFlagMaskAlternate;
     else if (strcmp(s, "ctrl") == 0) *mods |= kCGEventFlagMaskControl;
     else if (strcmp(s, "shift") == 0) *mods |= kCGEventFlagMaskShift;
     else return false;
@@ -218,11 +218,6 @@ static const char *parse_action(char *s, struct binding *b) {
             const char *err = parse_app_options(options, b);
             if (err) return err;
             arg = trim(arg);
-        }
-        size_t len = strlen(arg);
-        if (len >= 2 && arg[0] == '"' && arg[len - 1] == '"') {
-            arg[len - 1] = '\0';
-            arg++;
         }
         if (*arg == '\0') return "app needs a name";
         b->action = ACTION_APP;
