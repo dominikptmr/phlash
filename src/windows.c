@@ -4,7 +4,6 @@
 
 #include <CoreGraphics/CoreGraphics.h>
 
-// Smaller windows are helpers (status items, drag handles), not app windows.
 #define MIN_WINDOW_SIZE 100
 
 static double dict_double(CFDictionaryRef dict, CFStringRef key) {
@@ -22,8 +21,7 @@ static int64_t dict_i64(CFDictionaryRef dict, CFStringRef key) {
 }
 
 size_t windows_get(struct window out[WINDOWS_MAX]) {
-    // OptionAll includes windows on other spaces. Owner names and IDs need no
-    // Screen Recording permission; only window titles would.
+    // owner and IDs need no Screen Recording permission
     CFArrayRef list = CGWindowListCopyWindowInfo(
         kCGWindowListOptionAll | kCGWindowListExcludeDesktopElements, kCGNullWindowID);
     if (!list) return 0;

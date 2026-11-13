@@ -21,8 +21,7 @@
 #include <sys/file.h>
 #include <unistd.h>
 
-// Only touched on the main thread: the tap callback and signal handlers both
-// run on the main run loop.
+// main thread only since tap and signals run on the main run loop
 static struct config *config;
 static const char *config_path;
 static dispatch_queue_t work;
@@ -42,10 +41,8 @@ static void usage(FILE *out) {
             "Send SIGHUP to reload the config.\n");
 }
 
-// Asks once (which also adds phlash to the Accessibility list), then waits
-// for the grant. A running process never sees the grant, so we restart
-// ourselves with exec every 2 s: same process for launchd, fresh permission
-// check. PHLASH_ASKED keeps the prompt and log line from repeating.
+// a running process never sees the grant
+// re-exec every 2 s keeping the pid for launchd
 static void wait_for_accessibility(char *argv[]) {
     bool asked = getenv("PHLASH_ASKED") != NULL;
     const void *keys[] = {kAXTrustedCheckOptionPrompt};
@@ -69,18 +66,17 @@ static void wait_for_accessibility(char *argv[]) {
     exit(1);
 }
 
-// Two instances (say the LaunchAgent and one started from CLion) would both
-// remap caps lock and run every hotkey twice. The lock is released on exit.
+// a second instance would double every hotkey
 static bool lock_single_instance(void) {
     char path[PATH_MAX];
     size_t len = confstr(_CS_DARWIN_USER_TEMP_DIR, path, sizeof path);
     if (len == 0 || len > sizeof path) snprintf(path, sizeof path, "/tmp/");
     strlcat(path, "phlash.lock", sizeof path);
 
-    // O_CLOEXEC: apps started by exec bindings must not inherit the lock.
+    // exec children must not inherit the lock
     int fd = open(path, O_RDWR | O_CREAT | O_CLOEXEC, 0600);
-    if (fd < 0) return true;  // can't tell; don't refuse to start over it
-    return flock(fd, LOCK_EX | LOCK_NB) == 0;  // fd stays open while we run
+    if (fd < 0) return true;  // can't tell so start anyway
+    return flock(fd, LOCK_EX | LOCK_NB) == 0;
 }
 
 static void print_key(uint16_t keycode) {
@@ -89,7 +85,6 @@ static void print_key(uint16_t keycode) {
     else printf("0x%02x", keycode);
 }
 
-// Prints the modifiers joined by separator; false if there were none.
 static bool print_mods(CGEventFlags mods, const char *separator) {
     static const struct { CGEventFlags flag; const char *name; } names[] = {
         {kCGEventFlagMaskCommand, "cmd"}, {kCGEventFlagMaskAlternate, "opt"},
@@ -160,13 +155,11 @@ static void print_settings(const struct config *c) {
 
 static void on_hotkey(uint16_t keycode, CGEventFlags mods, void *ctx) {
     (void)ctx;
-    // Actions run later on the work queue; a reload frees the old config only
-    // after work already queued, so this pointer stays valid for them.
+    // a reload frees the old config after queued work
+    // so c stays valid for it
     const struct config *c = config;
     const struct binding *b = config_find(c, keycode, mods);
 
-    // Hyper + "set app-window-mod" + an app's key cycles that app's windows,
-    // unless the combo is bound to something itself.
     const struct binding *app = NULL;
     if (!b && c->app_window_mods && (mods & TAP_MOD_MASK) == c->app_window_mods) {
         app = config_find(c, keycode, 0);
@@ -203,7 +196,6 @@ static void on_mods(CGEventFlags mods, void *ctx) {
     dispatch_async(work, ^{ apps_mods_changed(mods); });
 }
 
-// Hyper tapped: runs the tap line for the modifiers held ("cmd + hyper : ...").
 static void on_tap(CGEventFlags mods, void *ctx) {
     (void)ctx;
     const struct config *c = config;  // see on_hotkey
@@ -229,9 +221,7 @@ static void on_modifier_tap(uint16_t keycode, void *ctx) {
     });
 }
 
-// Space changes made outside phlash (trackpad, Mission Control, clicking an
-// app) aren't announced to us, so look at the active space a few times a second.
-// One cheap window server query; the leeway lets macOS batch the wakeups.
+// outside space changes aren't announced so poll
 #define TRACK_INTERVAL_MS 100
 
 static void start_tracking_spaces(void) {
@@ -243,7 +233,6 @@ static void start_tracking_spaces(void) {
 }
 
 static void reload_config(void) {
-    // The layout may have changed since the last load.
     load_layout();
     struct config *fresh = config_load(config_path);
     if (!fresh) {
@@ -253,7 +242,7 @@ static void reload_config(void) {
     struct config *old = config;
     config = fresh;
     tap_set_tap_ms(config->tap_ms);
-    // Actions already queued still point into the old config; free it after them.
+    // free after queued actions
     dispatch_async(work, ^{ config_free(old); });
     printf("phlash: reloaded %s (%zu bindings)\n", config_path, config->count);
 }
@@ -296,8 +285,7 @@ int main(int argc, char *argv[]) {
 
     setvbuf(stdout, NULL, _IOLBF, 0);
 
-    // First start (e.g. after brew install): begin with the example config.
-    // A missing --config path stays an error.
+    // a missing --config path stays an error
     if (!custom_path && access(config_path, F_OK) != 0 && errno == ENOENT &&
         config_create_default(config_path)) {
         printf("phlash: created %s from the example config\n", config_path);
@@ -315,7 +303,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (!lock_single_instance()) {
-        // Exit 0 so the LaunchAgent doesn't keep restarting us while the other runs.
+        // exit 0 so launchd doesn't restart us
         fprintf(stderr, "phlash: already running\n");
         config_free(config);
         return 0;
@@ -333,8 +321,7 @@ int main(int argc, char *argv[]) {
         tap_stop();
         return 1;
     }
-    // The first window server query takes ~70 ms to connect; pay it now, not on
-    // the first hotkey.
+    // first window server query takes ~70 ms so warm up now
     spaces_active();
     start_tracking_spaces();
 
@@ -347,7 +334,7 @@ int main(int argc, char *argv[]) {
 
     capslock_restore();
     tap_stop();
-    // Don't leave a tab shortcut's modifier logically held after we're gone.
+    // don't leave tab modifiers held
     dispatch_sync(work, ^{ apps_release_held(); });
     printf("phlash: stopped\n");
     return 0;

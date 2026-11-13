@@ -5,10 +5,7 @@
 #include <string.h>
 #include <strings.h>
 
-// Bindings are stored as virtual keycodes, which name physical key positions.
-// Keys that type a character get their name from the active keyboard layout
-// (keys_load_layout), so "y", "ö" or "#" mean the key printed with that
-// character; these US names are only the fallback. Other keys have fixed names.
+// US fallback names
 static const char *const fallback_names[128] = {
     [0x00] = "a", [0x01] = "s", [0x02] = "d", [0x03] = "f", [0x04] = "h",
     [0x05] = "g", [0x06] = "z", [0x07] = "x", [0x08] = "c", [0x09] = "v",
@@ -30,8 +27,7 @@ static const char *const fallback_names[128] = {
     [0x7B] = "left", [0x7C] = "right", [0x7D] = "down", [0x7E] = "up",
 };
 
-// The main block's character keys, including the ISO key left of Z/Y (0x0A),
-// which US keyboards lack.
+// incl ISO key 0x0A missing on US keyboards
 static const uint16_t character_keys[] = {
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B,
     0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
@@ -39,8 +35,6 @@ static const uint16_t character_keys[] = {
     0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F, 0x32,
 };
 
-// Names from the active layout (UTF-8); empty where the key types nothing.
-// Once loaded, they replace the fallback names of all character keys.
 static char layout_names[128][8];
 static bool layout_loaded;
 
@@ -67,7 +61,6 @@ int keys_code(const char *name) {
     return -1;
 }
 
-// The character keycode types without modifiers, as lowercase UTF-8.
 static bool translate(const UCKeyboardLayout *layout, uint16_t keycode, char out[8]) {
     UInt32 dead_keys = 0;
     UniChar chars[4];
@@ -88,7 +81,6 @@ bool keys_load_layout(void) {
     memset(layout_names, 0, sizeof layout_names);
     layout_loaded = false;
 
-    // The layout behind the current input source, also for input methods.
     TISInputSourceRef source = TISCopyCurrentKeyboardLayoutInputSource();
     if (!source) return false;
     CFDataRef data = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData);
@@ -102,7 +94,7 @@ bool keys_load_layout(void) {
     for (size_t i = 0; i < sizeof character_keys / sizeof character_keys[0]; i++) {
         uint16_t keycode = character_keys[i];
         char name[8];
-        // A character two keys share (rare) stays with the first one.
+        // shared characters stay with the first key
         if (translate(layout, keycode, name) && keys_code(name) < 0) {
             memcpy(layout_names[keycode], name, sizeof name);
         }

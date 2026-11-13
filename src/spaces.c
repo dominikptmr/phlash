@@ -65,7 +65,7 @@ uint64_t spaces_of_window(uint32_t window_id) {
     CFRelease(windows);
     if (!spaces) return 0;
 
-    // A window can be on several spaces ("All Desktops"); the first is enough.
+    // "All Desktops" windows have several and the first is enough
     int64_t id = 0;
     if (CFArrayGetCount(spaces) > 0) {
         CFNumberGetValue(CFArrayGetValueAtIndex(spaces, 0), kCFNumberSInt64Type, &id);

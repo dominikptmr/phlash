@@ -1,5 +1,4 @@
-# Homebrew formula for phlash. Template: scripts/update-formula.sh fills in
-# @URL@ and @SHA256@ for a release and writes it to the tap as Formula/phlash.rb.
+# template filled by scripts/update-formula.sh
 class Phlash < Formula
   desc "Instant keyboard navigation for macOS Spaces, with caps lock as Hyper"
   homepage "https://github.com/dominikptmr/phlash"

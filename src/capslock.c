@@ -4,7 +4,7 @@
 
 #include <stddef.h>
 
-// HID usages on the keyboard page (0x07): caps lock = 0x39, F18 = 0x6D.
+// HID page 0x07 caps lock 0x39 -> F18 0x6D
 static const char remap_json[] =
     "{\"UserKeyMapping\":[{\"HIDKeyboardModifierMappingSrc\":0x700000039,"
     "\"HIDKeyboardModifierMappingDst\":0x70000006D}]}";
@@ -12,7 +12,6 @@ static const char restore_json[] = "{\"UserKeyMapping\":[]}";
 
 static bool hidutil_set(const char *json) {
     char *const argv[] = {"hidutil", "property", "--set", (char *)json, NULL};
-    // hidutil echoes the resulting property; keep it out of our log.
     return proc_run("/usr/bin/hidutil", argv, true);
 }
 

@@ -1,6 +1,5 @@
 #!/bin/bash
-# Builds phlash (Release), installs it to ~/.local/bin and runs it at login
-# as a LaunchAgent. Safe to rerun after changes: it rebuilds and restarts.
+# builds installs and starts phlash at login
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -12,7 +11,6 @@ LOG="$HOME/Library/Logs/phlash.log"
 BUILD=build/release
 DOMAIN="gui/$(id -u)"
 
-# cmake from PATH, else the copy bundled with CLion.
 CMAKE=""
 for c in "$(command -v cmake || true)" \
          "$HOME"/Applications/CLion.app/Contents/bin/cmake/mac/*/bin/cmake \
@@ -24,12 +22,9 @@ if [[ -z "$CMAKE" ]]; then
     exit 1
 fi
 
-# A real certificate keeps the code signature, and with it the Accessibility
-# grant, the same across rebuilds. Ad hoc signing works but loses the grant.
+# a stable cert keeps the Accessibility grant across rebuilds
 has_cert() { security find-identity -p codesigning | grep -q "\"$CERT\""; }
 
-# Creates a self-signed code-signing certificate in the login keychain, the
-# same as Keychain Access → Certificate Assistant → Create a Certificate…
 create_cert() {
     local dir
     dir=$(mktemp -d)
@@ -60,7 +55,6 @@ fi
 "$CMAKE" --build "$BUILD"
 "$BUILD/phlash" --check >/dev/null  # creates the config on first install
 
-# Stop the running copy and wait until launchd has let go of it.
 launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
 for _ in $(seq 50); do
     launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1 || break
@@ -68,11 +62,9 @@ for _ in $(seq 50); do
 done
 
 mkdir -p "$(dirname "$BIN")" "$(dirname "$PLIST")" "$(dirname "$LOG")"
-# Replace the file instead of overwriting it: the kernel caches code signatures
-# per file, and a signed binary rewritten in place gets killed on launch.
+# replace not overwrite since the kernel caches signatures per file
 cp "$BUILD/phlash" "$BIN.new"
-# Sign here too: CMake only signs when it relinks, so a new certificate with
-# unchanged code would otherwise keep the old signature.
+# re-sign since CMake only signs on relink
 codesign --force --sign "$IDENTITY" --identifier phlash "$BIN.new"
 mv -f "$BIN.new" "$BIN"
 

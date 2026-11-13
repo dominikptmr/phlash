@@ -5,8 +5,7 @@
 #include <stdio.h>
 #include <time.h>
 
-// Releasing Hyper within this time, with no other key pressed in between, is a
-// tap. Modifiers don't count as other keys: cmd/option/ctrl + tap are gestures.
+// modifiers don't count so cmd + tap is its own gesture
 static uint64_t tap_ns = 300 * 1000000ULL;
 
 static CFMachPortRef port;
@@ -20,18 +19,16 @@ static void *hotkey_ctx;
 
 static bool debug;
 static bool hyper_down;
-static bool hyper_used;         // another (non-modifier) key was pressed while Hyper was held
-// Our own clock: CGEvent timestamps are mach ticks on Apple silicon, not ns.
+static bool hyper_used;
+// CGEvent timestamps are mach ticks on Apple silicon
 static uint64_t hyper_down_at;
-// Keys whose key-down we swallowed, so their key-up is swallowed too even if
-// Hyper was released in between. Indexed by keycode.
+// swallow key-ups of swallowed key-downs even after Hyper release
 static bool swallowed[128];
 
 static bool modifier_armed;
 static uint16_t modifier_key;
 static uint64_t modifier_down_at;
 
-// Handles F18 (Hyper) itself; it never reaches apps.
 static void on_hyper(CGEventRef event, bool down) {
     if (down) {
         if (CGEventGetIntegerValueField(event, kCGKeyboardEventAutorepeat)) return;
@@ -80,7 +77,7 @@ static CGEventRef callback(CGEventTapProxy proxy, CGEventType type, CGEventRef e
     (void)ctx;
 
     if (type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput) {
-        // We may have missed key-ups while disabled.
+        // key-ups may be missed while disabled
         hyper_down = false;
         modifier_armed = false;
         for (int i = 0; i < 128; i++) swallowed[i] = false;
@@ -90,8 +87,7 @@ static CGEventRef callback(CGEventTapProxy proxy, CGEventType type, CGEventRef e
         return event;
     }
 
-    // Keys phlash types itself (like an app's next-tab shortcut, sent while
-    // Hyper is still held) must reach the app, not be swallowed as a combo.
+    // let our own keys through to the app
     if (CGEventGetIntegerValueField(event, kCGEventSourceUserData) == TAP_SYNTHETIC) return event;
 
     if (type != kCGEventKeyDown && type != kCGEventKeyUp && type != kCGEventFlagsChanged) {
@@ -133,8 +129,7 @@ static CGEventRef callback(CGEventTapProxy proxy, CGEventType type, CGEventRef e
         return NULL;
     }
 
-    // Every key pressed with Hyper is swallowed, bound or not: an unbound combo
-    // would otherwise reach the app as the plain key.
+    // swallow all Hyper combos so unbound ones don't leak
     if (!hyper_down) return event;
     hyper_used = true;
     swallowed[keycode] = true;

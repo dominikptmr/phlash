@@ -1,6 +1,5 @@
 #!/bin/bash
-# Writes the Homebrew formula for a pushed release tag into a checkout of the
-# tap repo (dominikptmr/homebrew-tap). Commit and push the tap afterwards.
+# writes the formula for a pushed tag into the tap checkout
 #
 #   scripts/update-formula.sh v0.1.0 [../homebrew-tap]
 set -euo pipefail
@@ -15,7 +14,7 @@ if [[ ! -d "$TAP" ]]; then
     exit 1
 fi
 
-# The checksum of GitHub's tarball for the tag, so the tag must be pushed.
+# needs the tag pushed
 SHA=$(curl -fsSL "$URL" | shasum -a 256 | cut -d' ' -f1)
 
 mkdir -p "$TAP/Formula"

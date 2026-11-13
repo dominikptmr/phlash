@@ -8,13 +8,11 @@
 #include <stdio.h>
 #include <time.h>
 
-// How long to wait for a switch to land before giving up on confirming it.
 #define SETTLE_TIMEOUT_MS 250
 #define SETTLE_POLL_MS 2
 
-// ISS posts the swipe and returns; it lands a few ms later. Anything done in
-// between (like activating an app, or computing the next switch from the
-// current space) would see the old space, so wait for the new one.
+// ISS returns before the switch lands
+// wait so later steps see the new space
 static void wait_for_space(uint64_t id) {
     struct timespec poll = {0, SETTLE_POLL_MS * 1000000L};
     for (int waited = 0; waited < SETTLE_TIMEOUT_MS; waited += SETTLE_POLL_MS) {
@@ -23,9 +21,7 @@ static void wait_for_space(uint64_t id) {
     }
 }
 
-// The active space and the one before it, for switch_back. Only touched on
-// the work queue, like everything else here, so a switch in progress (and the
-// spaces a multi-space swipe passes through) is never recorded halfway.
+// work queue only so no half-recorded switches
 static uint64_t current_id;
 static uint64_t previous_id;
 
@@ -63,7 +59,7 @@ bool switch_to(int index) {
         return false;
     }
 
-    // ISS counts 0-based within the display under the pointer.
+    // ISS is 0-based per display under the pointer
     unsigned int local = 0;
     for (int i = 0; i < index - 1; i++) {
         if (spaces[i].display == target->display) local++;
@@ -83,7 +79,6 @@ bool switch_cycle(bool reverse) {
     int current = spaces_index(spaces, count, spaces_active());
     if (current == 0) return false;
 
-    // This display's spaces are contiguous in the list: [first, last].
     int display = spaces[current - 1].display;
     int first = current, last = current;
     while (first > 1 && spaces[first - 2].display == display) first--;
@@ -118,7 +113,6 @@ bool switch_back(void) {
     size_t count = spaces_get(spaces);
     int index = spaces_index(spaces, count, previous_id);
     if (!index) {
-        // Its fullscreen app was closed, or it was removed in Mission Control.
         printf("phlash: the last used space is gone\n");
         previous_id = 0;
         return false;

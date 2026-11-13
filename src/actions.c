@@ -6,7 +6,7 @@
 #include "tap.h"
 
 void action_run(const struct config *config, const struct binding *b) {
-    // Tab and app actions decide themselves whether to keep a tab switcher open.
+    // tab and app actions manage the tab switcher themselves
     if (b->action != ACTION_APP && b->action != ACTION_TAB) apps_release_held();
 
     switch (b->action) {
@@ -23,8 +23,7 @@ void action_run(const struct config *config, const struct binding *b) {
         apps_focus(b->arg, config_app_tab(config, b));
         break;
     case ACTION_TAB: {
-        // A tap with option held keeps the switcher open until option is let
-        // go; with Hyper + key, until Hyper is. Shift only picks the direction.
+        // shift only sets direction
         CGEventFlags until = b->tap ? b->mods & TAP_MOD_MASK & ~kCGEventFlagMaskShift : 0;
         apps_cycle_tab(config, b->reverse, until);
         if (b->tap_modifier) apps_release_held();

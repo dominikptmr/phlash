@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <string.h>
 
-// Prints the distinct app names of the windows on space_id, comma-separated.
 static void print_apps(const struct window *windows, size_t count, uint64_t space_id) {
     bool first = true;
     for (size_t i = 0; i < count; i++) {
@@ -49,11 +48,10 @@ void list_print(void) {
         print_apps(windows, window_count, s->id);
     }
 
-    // Minimized windows, hidden apps and invisible helper windows.
     printf("  no space      ");
     print_apps(windows, window_count, 0);
 
-    // Should stay empty; anything here means space IDs don't match up.
+    // should stay empty or space IDs don't match
     for (size_t i = 0; i < window_count; i++) {
         const struct window *w = &windows[i];
         if (w->space && !spaces_index(spaces, space_count, w->space)) {
