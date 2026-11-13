@@ -160,8 +160,7 @@ static void run(const struct config *c, const struct binding *b) {
     });
 }
 
-static void on_hotkey(uint16_t keycode, CGEventFlags mods, void *ctx) {
-    (void)ctx;
+static void on_hotkey(uint16_t keycode, CGEventFlags mods) {
     // a reload frees the old config after queued work
     // so c stays valid for it
     const struct config *c = config;
@@ -185,18 +184,15 @@ static void load_layout(void) {
     }
 }
 
-static void on_release(void *ctx) {
-    (void)ctx;
+static void on_release(void) {
     dispatch_async(work, ^{ apps_hyper_released(); });
 }
 
-static void on_mods(CGEventFlags mods, void *ctx) {
-    (void)ctx;
+static void on_mods(CGEventFlags mods) {
     dispatch_async(work, ^{ apps_mods_changed(mods); });
 }
 
-static void on_tap(CGEventFlags mods, void *ctx) {
-    (void)ctx;
+static void on_tap(CGEventFlags mods) {
     const struct config *c = config;  // see on_hotkey
     const struct binding *b = config_find_tap(c, mods);
     debugf("hotkey: hyper tapped, mods 0x%08llx -> %s", (unsigned long long)mods,
@@ -204,8 +200,7 @@ static void on_tap(CGEventFlags mods, void *ctx) {
     if (b) run(c, b);
 }
 
-static void on_modifier_tap(uint16_t keycode, void *ctx) {
-    (void)ctx;
+static void on_modifier_tap(uint16_t keycode) {
     const struct config *c = config;
     const struct binding *b = config_find_modifier_tap(c, keycode);
     debugf("hotkey: modifier 0x%02x tapped -> %s", keycode, b ? "bound" : "no binding");
@@ -340,7 +335,7 @@ int main(int argc, char *argv[]) {
 
     work = dispatch_queue_create("phlash.work", DISPATCH_QUEUE_SERIAL);
     tap_set_tap_ms(config->tap_ms);
-    if (!tap_start(on_hotkey, on_tap, on_release, on_mods, on_modifier_tap, NULL)) {
+    if (!tap_start(on_hotkey, on_tap, on_release, on_mods, on_modifier_tap)) {
         fprintf(stderr, "phlash: cannot create event tap\n");
         return 1;
     }

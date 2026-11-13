@@ -15,7 +15,6 @@ static tap_alone_fn alone_fn;
 static tap_release_fn release_fn;
 static tap_mods_fn mods_fn;
 static tap_modifier_fn modifier_fn;
-static void *hotkey_ctx;
 
 static bool hyper_down;
 static bool hyper_used;
@@ -38,9 +37,9 @@ static void on_hyper(CGEventRef event, bool down) {
     }
     hyper_down = false;
     if (!hyper_used && clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - hyper_down_at < tap_ns) {
-        alone_fn(CGEventGetFlags(event) & TAP_MOD_MASK, hotkey_ctx);
+        alone_fn(CGEventGetFlags(event) & TAP_MOD_MASK);
     }
-    release_fn(hotkey_ctx);
+    release_fn();
 }
 
 static void on_modifier(uint16_t keycode, CGEventFlags flags) {
@@ -55,7 +54,7 @@ static void on_modifier(uint16_t keycode, CGEventFlags flags) {
     }
     if (modifier_armed && modifier_key == keycode && flags == 0 &&
         now - modifier_down_at < tap_ns) {
-        modifier_fn(keycode, hotkey_ctx);
+        modifier_fn(keycode);
     }
     modifier_armed = false;
 }
@@ -69,7 +68,7 @@ static CGEventRef callback(CGEventTapProxy proxy, CGEventType type, CGEventRef e
         hyper_down = false;
         modifier_armed = false;
         for (int i = 0; i < 128; i++) swallowed[i] = false;
-        release_fn(hotkey_ctx);
+        release_fn();
         CGEventTapEnable(port, true);
         debugf("tap: re-enabled after being disabled (type %d)", type);
         return event;
@@ -87,7 +86,7 @@ static CGEventRef callback(CGEventTapProxy proxy, CGEventType type, CGEventRef e
 
     if (type == kCGEventFlagsChanged) {
         on_modifier(keycode, CGEventGetFlags(event));
-        mods_fn(CGEventGetFlags(event) & TAP_MOD_MASK, hotkey_ctx);
+        mods_fn(CGEventGetFlags(event) & TAP_MOD_MASK);
         return event;
     }
     if (type == kCGEventKeyDown) modifier_armed = false;
@@ -111,19 +110,18 @@ static CGEventRef callback(CGEventTapProxy proxy, CGEventType type, CGEventRef e
     swallowed[keycode] = true;
 
     if (!CGEventGetIntegerValueField(event, kCGKeyboardEventAutorepeat)) {
-        hotkey_fn(keycode, CGEventGetFlags(event) & TAP_MOD_MASK, hotkey_ctx);
+        hotkey_fn(keycode, CGEventGetFlags(event) & TAP_MOD_MASK);
     }
     return NULL;
 }
 
 bool tap_start(tap_hotkey_fn fn, tap_alone_fn alone, tap_release_fn release, tap_mods_fn mods,
-               tap_modifier_fn modifier, void *ctx) {
+               tap_modifier_fn modifier) {
     hotkey_fn = fn;
     alone_fn = alone;
     release_fn = release;
     mods_fn = mods;
     modifier_fn = modifier;
-    hotkey_ctx = ctx;
 
     CGEventMask mask = CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventKeyUp) |
                        CGEventMaskBit(kCGEventFlagsChanged) |
