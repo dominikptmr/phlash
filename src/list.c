@@ -50,12 +50,4 @@ void list_print(void) {
 
     printf("  no space      ");
     print_apps(windows, window_count, 0);
-
-    // should stay empty or space IDs don't match
-    for (size_t i = 0; i < window_count; i++) {
-        const struct window *w = &windows[i];
-        if (w->space && !spaces_index(spaces, space_count, w->space)) {
-            printf("  unknown space %llu: %s\n", (unsigned long long)w->space, w->app);
-        }
-    }
 }

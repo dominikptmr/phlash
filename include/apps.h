@@ -2,11 +2,8 @@
 #define PHLASH_APPS_H
 
 #include "config.h"
-#include "windows.h"
 
 #include <stdbool.h>
-
-bool apps_find(const char *name, struct window *out);
 
 void apps_focus(const char *spec, const struct combo *next_tab);
 

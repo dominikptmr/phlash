@@ -25,6 +25,4 @@ void tap_stop(void);
 
 void tap_set_tap_ms(int ms);
 
-void tap_set_debug(bool on);
-
 #endif

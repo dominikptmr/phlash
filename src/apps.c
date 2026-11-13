@@ -5,6 +5,7 @@
 #include "spaces.h"
 #include "switch.h"
 #include "tap.h"
+#include "windows.h"
 
 #include <ApplicationServices/ApplicationServices.h>
 #include <libproc.h>
@@ -53,13 +54,6 @@ static const struct window *find_window(const char *name) {
         if (!found) found = w;
     }
     return found;
-}
-
-bool apps_find(const char *name, struct window *out) {
-    refresh_windows();
-    const struct window *w = find_window(name);
-    if (w) *out = *w;
-    return w != NULL;
 }
 
 static size_t split_names(const char *spec, char *buf, size_t size, char *names[MAX_NAMES]) {

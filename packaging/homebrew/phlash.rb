@@ -53,10 +53,11 @@ class Phlash < Formula
   end
 
   test do
-    (testpath/"config").write <<~EOS
+    (testpath/".config/phlash").mkpath
+    (testpath/".config/phlash/config").write <<~EOS
       hyper : space back
       hyper - s : app Finder
     EOS
-    assert_match "is valid", shell_output("#{bin}/phlash --check --config #{testpath}/config")
+    assert_match "is valid", shell_output("HOME=#{testpath} #{bin}/phlash --check")
   end
 end

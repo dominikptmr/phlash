@@ -25,13 +25,11 @@
 static struct config *config;
 static const char *config_path;
 static dispatch_queue_t work;
-static bool debug;
 
 static void usage(FILE *out) {
     fprintf(out,
-            "usage: phlash [--config PATH] [--check] [--list] [--debug]\n"
+            "usage: phlash [--check] [--list] [--debug]\n"
             "\n"
-            "  --config PATH  config file (default ~/.config/phlash/config)\n"
             "  --check        check the config file and exit\n"
             "  --list         list spaces (* = current) and the apps on them, then exit\n"
             "  --debug        log every key event and hotkey to stderr/stdout\n"
@@ -166,13 +164,11 @@ static void on_hotkey(uint16_t keycode, CGEventFlags mods, void *ctx) {
         if (app && app->action != ACTION_APP) app = NULL;
     }
 
-    if (debug) {
-        fprintf(stderr, "hotkey: key 0x%02x mods 0x%08llx -> %s\n", keycode,
-                (unsigned long long)mods, b ? "bound" : app ? "next window" : "no binding");
-    }
+    debugf("hotkey: key 0x%02x mods 0x%08llx -> %s", keycode, (unsigned long long)mods,
+           b ? "bound" : app ? "next window" : "no binding");
     if (b) {
         dispatch_async(work, ^{
-            if (debug) print_binding(b);
+            if (log_debug) print_binding(b);
             action_run(c, b);
         });
     } else if (app) {
@@ -204,7 +200,7 @@ static void on_tap(CGEventFlags mods, void *ctx) {
            b ? "bound" : "no binding");
     if (!b) return;
     dispatch_async(work, ^{
-        if (debug) print_binding(b);
+        if (log_debug) print_binding(b);
         action_run(c, b);
     });
 }
@@ -216,7 +212,7 @@ static void on_modifier_tap(uint16_t keycode, void *ctx) {
     debugf("hotkey: modifier 0x%02x tapped -> %s", keycode, b ? "bound" : "no binding");
     if (!b) return;
     dispatch_async(work, ^{
-        if (debug) print_binding(b);
+        if (log_debug) print_binding(b);
         action_run(c, b);
     });
 }
@@ -261,7 +257,6 @@ static void stop(void) {
 
 int main(int argc, char *argv[]) {
     static const struct option options[] = {
-        {"config", required_argument, NULL, 'c'},
         {"check", no_argument, NULL, 'k'},
         {"list", no_argument, NULL, 'l'},
         {"debug", no_argument, NULL, 'd'},
@@ -270,14 +265,12 @@ int main(int argc, char *argv[]) {
     };
     bool check_only = false;
     config_path = config_default_path();
-    bool custom_path = false;
     int opt;
-    while ((opt = getopt_long(argc, argv, "c:kldh", options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "kldh", options, NULL)) != -1) {
         switch (opt) {
-        case 'c': config_path = optarg; custom_path = true; break;
         case 'k': check_only = true; break;
         case 'l': list_print(); return 0;
-        case 'd': debug = log_debug = true; break;
+        case 'd': log_debug = true; break;
         case 'h': usage(stdout); return 0;
         default: usage(stderr); return 2;
         }
@@ -285,8 +278,7 @@ int main(int argc, char *argv[]) {
 
     setvbuf(stdout, NULL, _IOLBF, 0);
 
-    // a missing --config path stays an error
-    if (!custom_path && access(config_path, F_OK) != 0 && errno == ENOENT &&
+    if (access(config_path, F_OK) != 0 && errno == ENOENT &&
         config_create_default(config_path)) {
         printf("phlash: created %s from the example config\n", config_path);
     }
@@ -311,7 +303,6 @@ int main(int argc, char *argv[]) {
     wait_for_accessibility(argv);
 
     work = dispatch_queue_create("phlash.work", DISPATCH_QUEUE_SERIAL);
-    tap_set_debug(debug);
     tap_set_tap_ms(config->tap_ms);
     if (!tap_start(on_hotkey, on_tap, on_release, on_mods, on_modifier_tap, NULL)) {
         fprintf(stderr, "phlash: cannot create event tap\n");

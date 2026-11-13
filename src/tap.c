@@ -1,8 +1,8 @@
 #include "tap.h"
 
 #include "keys.h"
+#include "log.h"
 
-#include <stdio.h>
 #include <time.h>
 
 // modifiers don't count so cmd + tap is its own gesture
@@ -17,7 +17,6 @@ static tap_mods_fn mods_fn;
 static tap_modifier_fn modifier_fn;
 static void *hotkey_ctx;
 
-static bool debug;
 static bool hyper_down;
 static bool hyper_used;
 // CGEvent timestamps are mach ticks on Apple silicon
@@ -83,7 +82,7 @@ static CGEventRef callback(CGEventTapProxy proxy, CGEventType type, CGEventRef e
         for (int i = 0; i < 128; i++) swallowed[i] = false;
         release_fn(hotkey_ctx);
         CGEventTapEnable(port, true);
-        if (debug) fprintf(stderr, "tap: re-enabled after being disabled (type %d)\n", type);
+        debugf("tap: re-enabled after being disabled (type %d)", type);
         return event;
     }
 
@@ -96,17 +95,17 @@ static CGEventRef callback(CGEventTapProxy proxy, CGEventType type, CGEventRef e
     }
 
     uint16_t keycode = (uint16_t)CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
-    if (debug) {
+    if (log_debug) {
         const char *name = keys_name(keycode);
         CGEventFlags flags = CGEventGetFlags(event);
-        fprintf(stderr, "tap: %-5s key %-6s (0x%02x) flags 0x%08llx%s%s%s%s  hyper %d\n",
-                type == kCGEventKeyDown ? "down" : type == kCGEventKeyUp ? "up" : "flags",
-                name ? name : "?", keycode, (unsigned long long)flags,
-                flags & kCGEventFlagMaskCommand ? " cmd" : "",
-                flags & kCGEventFlagMaskAlternate ? " opt" : "",
-                flags & kCGEventFlagMaskControl ? " ctrl" : "",
-                flags & kCGEventFlagMaskShift ? " shift" : "",
-                hyper_down);
+        debugf("tap: %-5s key %-6s (0x%02x) flags 0x%08llx%s%s%s%s  hyper %d",
+               type == kCGEventKeyDown ? "down" : type == kCGEventKeyUp ? "up" : "flags",
+               name ? name : "?", keycode, (unsigned long long)flags,
+               flags & kCGEventFlagMaskCommand ? " cmd" : "",
+               flags & kCGEventFlagMaskAlternate ? " opt" : "",
+               flags & kCGEventFlagMaskControl ? " ctrl" : "",
+               flags & kCGEventFlagMaskShift ? " shift" : "",
+               hyper_down);
     }
 
     if (type == kCGEventFlagsChanged) {
@@ -167,10 +166,6 @@ bool tap_start(tap_hotkey_fn fn, tap_alone_fn alone, tap_release_fn release, tap
 
 void tap_set_tap_ms(int ms) {
     tap_ns = (uint64_t)ms * 1000000ULL;
-}
-
-void tap_set_debug(bool on) {
-    debug = on;
 }
 
 void tap_stop(void) {
