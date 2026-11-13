@@ -48,6 +48,38 @@ uint64_t spaces_active(void) {
     return CGSGetActiveSpace(connection());
 }
 
+int spaces_pointer_display(void) {
+    CGEventRef event = CGEventCreate(NULL);
+    if (!event) return 0;
+    CGPoint pointer = CGEventGetLocation(event);
+    CFRelease(event);
+    CGDirectDisplayID id;
+    uint32_t found = 0;
+    if (CGGetDisplaysWithPoint(pointer, 1, &id, &found) != kCGErrorSuccess || found == 0) return 0;
+    CFUUIDRef uuid = CGDisplayCreateUUIDFromDisplayID(id);
+    if (!uuid) return 0;
+    CFStringRef wanted = CFUUIDCreateString(kCFAllocatorDefault, uuid);
+    CFRelease(uuid);
+
+    // no match when spaces span all displays
+    // ISS then uses the first one too
+    int index = 0;
+    CFArrayRef displays = CGSCopyManagedDisplaySpaces(connection(), NULL);
+    if (displays) {
+        for (CFIndex d = 0; d < CFArrayGetCount(displays); d++) {
+            CFStringRef name =
+                CFDictionaryGetValue(CFArrayGetValueAtIndex(displays, d), CFSTR("Display Identifier"));
+            if (name && CFEqual(name, wanted)) {
+                index = (int)d;
+                break;
+            }
+        }
+        CFRelease(displays);
+    }
+    CFRelease(wanted);
+    return index;
+}
+
 int spaces_index(const struct space *spaces, size_t count, uint64_t id) {
     for (size_t i = 0; i < count; i++) {
         if (spaces[i].id == id) return (int)i + 1;

@@ -3,8 +3,6 @@
 
 #include <stdbool.h>
 
-bool proc_run(const char *path, char *const argv[], bool quiet);
-
 bool proc_spawn(const char *path, char *const argv[]);
 
 #endif

@@ -18,6 +18,9 @@ size_t spaces_get(struct space out[SPACES_MAX]);
 
 uint64_t spaces_active(void);
 
+// display under the pointer which ISS switches
+int spaces_pointer_display(void);
+
 // 1-based or 0 if missing
 int spaces_index(const struct space *spaces, size_t count, uint64_t id);
 

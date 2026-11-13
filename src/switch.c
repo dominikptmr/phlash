@@ -58,6 +58,10 @@ bool switch_to(int index) {
         printf("phlash: space %d is on another display\n", index);
         return false;
     }
+    if (target->display != spaces_pointer_display()) {
+        debugf("space: pointer is on another display, not switching instantly");
+        return false;
+    }
 
     // ISS is 0-based per display under the pointer
     unsigned int local = 0;

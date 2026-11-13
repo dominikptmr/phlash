@@ -305,6 +305,13 @@ static bool already_bound(const struct config *config, const struct binding *b) 
                   : config_find(config, b->keycode, b->mods) != NULL;
 }
 
+struct config *config_new(void) {
+    struct config *config = calloc(1, sizeof *config);
+    config->default_tab = (struct combo){.keycode = 0x30, .mods = kCGEventFlagMaskControl};
+    config->tap_ms = DEFAULT_TAP_MS;
+    return config;
+}
+
 struct config *config_load(const char *path) {
     FILE *file = fopen(path, "r");
     if (!file) {
@@ -312,9 +319,7 @@ struct config *config_load(const char *path) {
         return NULL;
     }
 
-    struct config *config = calloc(1, sizeof *config);
-    config->default_tab = (struct combo){.keycode = 0x30, .mods = kCGEventFlagMaskControl};
-    config->tap_ms = DEFAULT_TAP_MS;
+    struct config *config = config_new();
     size_t capacity = 0;
     int errors = 0;
     char *line = NULL;

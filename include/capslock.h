@@ -3,8 +3,14 @@
 
 #include <stdbool.h>
 
+// keeps other mappings
 // lasts until capslock_restore or reboot
 bool capslock_remap(void);
+
+// restores the mapping if something reset it
+// true if it had to
+bool capslock_check(void);
+
 bool capslock_restore(void);
 
 #endif

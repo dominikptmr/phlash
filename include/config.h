@@ -56,6 +56,9 @@ const char *config_default_path(void);
 
 bool config_create(const char *path);
 
+// empty config with default settings
+struct config *config_new(void);
+
 struct config *config_load(const char *path);
 void config_free(struct config *config);
 

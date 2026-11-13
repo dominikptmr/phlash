@@ -45,6 +45,7 @@ target_link_options(phlash PRIVATE
 target_link_libraries(phlash PRIVATE
         iss
         "-framework Carbon"
+        "-framework IOKit"
         "-framework CoreFoundation"
         "-framework CoreGraphics"
         "-framework ApplicationServices")

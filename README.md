@@ -51,8 +51,6 @@ set app-window-mod cmd
 set tap-ms 200
 ```
 
-Reload with `pkill -HUP phlash`.
-
 ## Configuration
 
 One binding or setting per line:
@@ -65,8 +63,9 @@ set <setting> <value>
 - `#` starts a comment, but only at the beginning of a line
 - each trigger can be bound once; a second line fails with `already bound`
 - the order of lines doesn't matter
-- after editing, reload with `pkill -HUP phlash`; a config with errors is
-  reported with line numbers and the previous one stays active
+- phlash reloads the config within a second of saving, and when the keyboard
+  layout changes; a config with errors is reported with line numbers in the
+  log and the previous one stays active
 - `~/.local/bin/phlash --check` checks the config without reloading
 
 ### Modifiers
@@ -93,7 +92,7 @@ is removed when phlash stops.
 | macOS keycode in hex, for keys without a name | `0x0a` |
 
 Characters follow the active keyboard layout: on a German keyboard `z` and `y`
-are swapped compared to US. The layout is read at start and on every reload.
+are swapped compared to US.
 
 ### Triggers
 
@@ -184,6 +183,10 @@ hyper - d : app WebStorm | PhpStorm | Visual Studio Code
 - pressing the key again while the app is in front sends its next-tab
   shortcut, see `set tab`
 
+**Multiple displays**: spaces switch instantly only on the display under the
+mouse pointer. An app on another display is brought to the front with the
+normal macOS animation.
+
 **space back** also remembers space changes made with the trackpad, Mission
 Control or by clicking an app.
 
@@ -243,7 +246,6 @@ hyper - tab : key cmd+t
 
 | Task | Command |
 |---|---|
-| Reload config | `pkill -HUP phlash` |
 | Check config | `~/.local/bin/phlash --check` |
 | List spaces and apps | `~/.local/bin/phlash --list` |
 | Restart | `launchctl kickstart -k gui/$(id -u)/local.phlash` |
@@ -254,8 +256,8 @@ hyper - tab : key cmd+t
 
 ## Troubleshooting
 
-- **Shortcuts stopped working:** if `hidutil property --get UserKeyMapping`
-  prints `()`, caps lock lost its mapping; restart phlash.
+- **Shortcuts stopped working:** check the log. If something reset the caps
+  lock mapping, phlash restores it within a second and logs it.
 - **An app key does nothing:** the app has no open window, or the name doesn't
   match `~/.local/bin/phlash --list`.
 - **Accessibility is asked after every install:** allow `codesign` to use the

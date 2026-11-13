@@ -37,8 +37,7 @@ class Phlash < Formula
 
       On first start phlash creates an empty ~/.config/phlash/config.
       Syntax: https://github.com/dominikptmr/phlash#configuration
-      Reload it after editing:
-        pkill -HUP phlash
+      phlash reloads it when you save.
 
       Before starting, quit other caps lock remappers (Hyperkey, Karabiner
       caps lock rules) and turn off System Settings → Desktop & Dock →

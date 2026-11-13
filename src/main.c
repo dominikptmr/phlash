@@ -9,6 +9,7 @@
 #include "switch.h"
 #include "tap.h"
 
+#include <Carbon/Carbon.h>
 #include <dispatch/dispatch.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -19,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/file.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 // main thread only since tap and signals run on the main run loop
@@ -236,6 +238,43 @@ static void reload_config(void) {
     printf("phlash: reloaded %s (%zu bindings)\n", config_path, config->count);
 }
 
+static struct stat config_stat;
+
+// stat also catches editors saving by rename and symlinked configs
+static bool config_changed(void) {
+    struct stat st = {0};
+    stat(config_path, &st);
+    bool changed = st.st_ino != config_stat.st_ino || st.st_size != config_stat.st_size ||
+                   st.st_mtimespec.tv_sec != config_stat.st_mtimespec.tv_sec ||
+                   st.st_mtimespec.tv_nsec != config_stat.st_mtimespec.tv_nsec;
+    config_stat = st;
+    return changed;
+}
+
+static void start_watching(void) {
+    config_changed();
+    dispatch_source_t timer =
+        dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_main_queue());
+    dispatch_source_set_timer(timer, dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC), NSEC_PER_SEC,
+                              NSEC_PER_SEC / 2);
+    dispatch_source_set_event_handler(timer, ^{
+        if (config_changed()) reload_config();
+        if (capslock_check()) printf("phlash: caps lock mapping was reset, restored it\n");
+    });
+    dispatch_resume(timer);
+}
+
+// key names depend on the layout
+static void on_layout_changed(CFNotificationCenterRef center, void *observer, CFStringRef name,
+                              const void *object, CFDictionaryRef info) {
+    (void)center;
+    (void)observer;
+    (void)name;
+    (void)object;
+    (void)info;
+    reload_config();
+}
+
 static void on_signal(int sig, void (*handler)(void)) {
     signal(sig, SIG_IGN);
     dispatch_source_t src = dispatch_source_create(DISPATCH_SOURCE_TYPE_SIGNAL, (uintptr_t)sig, 0,
@@ -277,8 +316,8 @@ int main(int argc, char *argv[]) {
 
     load_layout();
     config = config_load(config_path);
-    if (!config) return 1;
     if (check_only) {
+        if (!config) return 1;
         print_settings(config);
         for (size_t i = 0; i < config->count; i++) print_binding(&config->bindings[i]);
         printf("phlash: %s is valid (%zu bindings)\n", config_path, config->count);
@@ -291,6 +330,11 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "phlash: already running\n");
         config_free(config);
         return 0;
+    }
+    // exiting would make launchd restart us in a loop
+    if (!config) {
+        fprintf(stderr, "phlash: running without bindings until the config is fixed\n");
+        config = config_new();
     }
     wait_for_accessibility(argv);
 
@@ -307,6 +351,11 @@ int main(int argc, char *argv[]) {
     // first window server query takes ~70 ms so warm up now
     spaces_active();
     start_tracking_spaces();
+    start_watching();
+    CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(), NULL,
+                                    on_layout_changed,
+                                    kTISNotifySelectedKeyboardInputSourceChanged, NULL,
+                                    CFNotificationSuspensionBehaviorDeliverImmediately);
 
     on_signal(SIGINT, stop);
     on_signal(SIGTERM, stop);
