@@ -102,7 +102,16 @@ static pid_t frontmost_pid(void) {
         CFRelease(app);
     }
     CFRelease(system);
-    return pid;
+    if (pid) return pid;
+
+    // fallback when AX reports no front app
+    uint64_t active = spaces_active();
+    for (size_t i = 0; i < window_count; i++) {
+        if (windows[i].space != active) continue;
+        debugf("app: no front app from AX, using %s (pid %d)", windows[i].app, windows[i].pid);
+        return windows[i].pid;
+    }
+    return 0;
 }
 
 static const char *front_name(char *const names[], size_t count, pid_t *pid_out) {
